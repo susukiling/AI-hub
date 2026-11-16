@@ -25,12 +25,13 @@ O.CITIES = {
 const defaults = {
   groqKey:'', geminiKey:'', rememberKeys:true, proxyUrl:'', recaptchaKey:'',
   voice:true, wake:false, profile:'',
-  cityKey:'tokyo', geo:null, fbConfig:'',
+  cityKey:'tokyo', geo:null,
   models:{ gemini:'gemini-2.5-flash', llama:'llama-3.3-70b-versatile', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
 O.cfg.models = Object.assign({}, defaults.models, O.cfg.models || {});
+delete O.cfg.fbConfig;   // firebaseConfigは js/firebase-config.js だけに書く（以前の設定画面の値は使わない）
 /* APIキーは設定本体とは別の入れ物に保存する。
    「このブラウザに保存する」をオフにすると、タブを閉じるまでしか残さない。 */
 function readKeys(){
@@ -80,21 +81,10 @@ O.safeJSON = function(t){
   if(m){ try{ return JSON.parse(m[1]); }catch(e){} }
   return null;
 };
-/* コンソールからコピーした「JSの書き方のオブジェクト」も読めるようにする */
-O.parseLooseJSON = function(t){
-  if(!t) return null;
-  const m = String(t).match(/\{[\s\S]*\}/);
-  if(!m) return null;
-  let s = m[0];
-  try{ return JSON.parse(s); }catch(e){}
-  s = s.replace(/'/g, '"').replace(/([{,]\s*)([A-Za-z_][\w]*)\s*:/g, '$1"$2":').replace(/,\s*([}\]])/g, '$1');
-  try{ return JSON.parse(s); }catch(e){ return null; }
-};
-
 /* ---------- toast / log ---------- */
-O.toast = function(msg){
+O.toast = function(msg, ms){
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');
-  clearTimeout(O.toast._t); O.toast._t = setTimeout(() => t.classList.remove('show'), 3400);
+  clearTimeout(O.toast._t); O.toast._t = setTimeout(() => t.classList.remove('show'), ms || 3400);
 };
 O.log = function(tag, text){
   const box = $('#logbox'); if(!box) return;

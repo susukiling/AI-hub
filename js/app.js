@@ -226,13 +226,18 @@ async function loadWeather(){
 function renderEvents(mode, msg){
   const box = $('#eventList'); box.textContent = ''; const meta = $('#eventMeta');
   if(!O.user){
-    meta.textContent = '未接続';
-    box.append(cta('Googleでログインすると、今日の予定がここに並びます。', 'Googleでログイン', doLogin)); return;
+    meta.textContent = '未ログイン';
+    const c = cta('Googleでログインすると、今日の予定がここに並びます。', 'Googleでログイン', doLogin);
+    const why = O.state.authError || (!O.fbReady && O.fbProblem);
+    if(why) c.insertBefore(el('p', 'empty err-note', why), c.lastChild);
+    box.append(c); return;
   }
   if(mode === 'error'){ meta.textContent = 'エラー'; box.append(cta(msg || '予定を読み込めませんでした。', '再読み込み', loadEvents)); return; }
   if(mode === 'expired' || (!O.google.valid && !O.state.events)){
-    meta.textContent = '要更新';
-    box.append(cta('カレンダーとの接続が切れています（約1時間で切れます）。', '再接続', doLogin)); return;
+    meta.textContent = '未連携';
+    const c = cta('カレンダーと連携すると、今日の予定が表示されます。連携は約1時間で切れるので、切れたらもう一度押してください。', 'カレンダーと連携', doConnect);
+    if(O.state.authError) c.insertBefore(el('p', 'empty err-note', O.state.authError), c.lastChild);
+    box.append(c); return;
   }
   const ev = O.state.events || [];
   meta.textContent = ev.length + ' 件';
@@ -254,15 +259,48 @@ async function loadEvents(){
     if(e.message === 'AUTH') renderEvents('expired'); else renderEvents('error', e.message);
   }
 }
+function authMessage(e){
+  const c = e.code || '';
+  const host = location.hostname || 'このサイト';
+  const map = {
+    'auth/unauthorized-domain':`このサイトのドメイン（${host}）がFirebaseの承認済みドメインにありません。Firebaseコンソール → Authentication → 設定 → 承認済みドメイン に追加してください`,
+    'auth/operation-not-allowed':'FirebaseでGoogleログインが有効になっていません。Authentication → Sign-in method で Google を有効にしてください',
+    'auth/popup-blocked':'ポップアップがブロックされました。アドレスバーの表示から、このサイトのポップアップを許可してください',
+    'auth/popup-closed-by-user':'ログインの画面が閉じられました。Googleの画面にエラーが出ていた場合は、その文言を確認してください（テストユーザーに入っていない、など）',
+    'auth/network-request-failed':'通信に失敗しました。ネットワークを確認してください',
+    'auth/operation-not-supported-in-this-environment':'この開き方ではログインできません。GitHub Pagesか http://localhost で開いてください',
+    'auth/invalid-api-key':'firebaseConfigのapiKeyが正しくありません。js/firebase-config.js を確認してください',
+    'auth/user-mismatch':'ログイン中とは別のGoogleアカウントが選ばれました。同じアカウントを選んでください',
+    'auth/credential-already-in-use':'このGoogleアカウントは別のユーザーで使われています。いったんログアウトしてください'
+  };
+  return map[c] || ('ログインできませんでした（' + (c || e.message) + '）');
+}
+function showAuthError(msg){
+  O.state.authError = msg; toast(msg, 10000); log('sys', msg);
+  renderEvents(); renderPhotos(); updateAccount();
+}
 async function doLogin(){
-  if(!O.fbReady){ toast('Firebaseの設定が必要です。設定画面に貼り付けてください'); openSettings(); return; }
+  if(!O.fbReady){ showAuthError(O.fbProblem || 'ログインの準備ができていません'); return; }
+  O.state.authError = '';
   try{
     await O.signIn();
-    await loadEvents(); renderPhotos(); updateAccount();
-    toast('Googleに接続しました');
+    toast('ログインしました。カレンダーとフォトは「連携」から許可してください');
   }catch(e){
-    if(e.code === 'auth/popup-closed-by-user' || e.code === 'auth/cancelled-popup-request') return;
-    toast('ログインに失敗: ' + (e.code || e.message)); log('sys', 'ログイン失敗: ' + (e.code || e.message));
+    if(e.code === 'auth/cancelled-popup-request') return;
+    showAuthError(authMessage(e));
+  }
+}
+async function doConnect(){
+  if(!O.fbReady){ showAuthError(O.fbProblem || 'ログインの準備ができていません'); return; }
+  if(!O.user){ doLogin(); return; }
+  O.state.authError = '';
+  try{
+    await O.connectGoogle();
+    await loadEvents(); renderPhotos(); updateAccount();
+    toast('カレンダーとフォトの権限を許可しました');
+  }catch(e){
+    if(e.code === 'auth/cancelled-popup-request') return;
+    showAuthError(authMessage(e));
   }
 }
 function updateAccount(){
@@ -271,7 +309,7 @@ function updateAccount(){
   const chip = $('#userChip'); chip.textContent = '';
   const pill = $('#pillGoogle');
   pill.classList.toggle('on', !!u);
-  pill.textContent = u ? (O.google.valid ? 'Google 接続中' : 'Google 要更新') : 'Google 未接続';
+  pill.textContent = u ? (O.google.valid ? 'Google 連携中' : 'Google ログイン済み') : 'Google 未ログイン';
   const box = $('#acctBox'); box.textContent = '';
   if(u){
     const first = (u.displayName || u.email || '').split(' ')[0];
@@ -283,7 +321,7 @@ function updateAccount(){
     const info = el('div'); info.append(el('b', '', u.displayName || 'ログイン中'), el('small', '', u.email || ''));
     a.append(info); box.append(a);
     const row = el('div', 'row');
-    const re = el('button', 'btn', '連携を更新'); re.type = 'button'; re.onclick = () => { toggleDrawer(false); doLogin(); };
+    const re = el('button', 'btn', O.google.valid ? '連携を更新' : 'カレンダー・フォトを連携'); re.type = 'button'; re.onclick = () => { toggleDrawer(false); doConnect(); };
     const out = el('button', 'btn', 'ログアウト'); out.type = 'button';
     out.onclick = async () => { await O.signOut(); toggleDrawer(false); toast('ログアウトしました'); };
     row.append(re, out); box.append(row);
@@ -291,7 +329,7 @@ function updateAccount(){
     const b = el('button', 'btn primary', 'Googleでログイン'); b.type = 'button'; b.style.width = '100%';
     b.onclick = () => { toggleDrawer(false); doLogin(); };
     box.append(b);
-    if(!O.fbReady) box.append(el('p', 'hint', 'ログインにはFirebaseの設定が必要です。設定画面で貼り付けてください。'));
+    if(!O.fbReady && O.fbProblem) box.append(el('p', 'hint', 'ログインできません: ' + O.fbProblem));
   }
   updateHello();
 }
@@ -299,6 +337,7 @@ let aiWas = O.anyKey();
 O.onAuth = u => {
   updateAccount(); refreshPills();
   if(u){
+    O.state.authError = '';
     log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); loadEvents(); renderPhotos();
     if(!aiWas && O.anyKey()){ log('sys', '共有プロキシ経由でAIが使えるようになりました'); loadNews(true); loadFeed(); }
   }else{ O.state.events = null; renderEvents(); renderPhotos(); }
@@ -402,6 +441,7 @@ let picking = false;
 function renderPhotos(status, link){
   const b = $('#photoBody'); b.textContent = '';
   if(!O.user){ b.append(cta('Googleでログインすると、Googleフォトから写真を選んで表示できます。', 'Googleでログイン', doLogin)); return; }
+  if(!O.google.valid){ b.append(cta('Googleフォトから選ぶには、先にカレンダー・フォトの権限を許可してください。', '権限を許可', doConnect)); return; }
   const ph = O.state.photos;
   if(ph.length){
     const g = el('div', 'ph-grid');
@@ -465,7 +505,7 @@ async function execAction(c){
     else if(a.type === 'set_timer') addTimer(a.seconds, a.label);
     else if(a.type === 'delegate'){ $('#teamTask').value = a.task; setView('team'); runTeam(a.task, false); }
     else if(a.type === 'add_event'){
-      if(!O.google.valid){ toast('Googleに接続すると予定を追加できます'); doLogin(); return; }
+      if(!O.google.valid){ toast('カレンダーと連携すると予定を追加できます'); doConnect(); return; }
       await O.createEvent(a); toast('Googleカレンダーに予定を追加しました'); log('sys', '予定を追加: ' + a.title); loadEvents();
     }
     c.state = 'done'; saveFeed(); renderFeed();
@@ -725,7 +765,7 @@ function openSettings(){
   const c = O.cfg;
   $('#groqKey').value = c.groqKey; $('#geminiKey').value = c.geminiKey;
   $('#mGemini').value = c.models.gemini; $('#mLlama').value = c.models.llama; $('#mGpt').value = c.models.gpt;
-  $('#profile').value = c.profile; $('#cityKey').value = c.cityKey; $('#fbConfig').value = c.fbConfig;
+  $('#profile').value = c.profile; $('#cityKey').value = c.cityKey;
   $('#rememberKeys').checked = c.rememberKeys !== false; $('#proxyUrl').value = c.proxyUrl; $('#recaptchaKey').value = c.recaptchaKey;
   $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
   dlg.showModal();
@@ -733,18 +773,18 @@ function openSettings(){
 $('#cancelSettings').addEventListener('click', () => dlg.close());
 $('#settingsForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const c = O.cfg; const hadKey = O.anyKey(); const oldFb = c.fbConfig; const oldCity = c.cityKey; const oldRk = c.recaptchaKey;
+  const c = O.cfg; const hadKey = O.anyKey(); const oldCity = c.cityKey; const oldRk = c.recaptchaKey;
   c.rememberKeys = $('#rememberKeys').checked; c.proxyUrl = $('#proxyUrl').value.trim(); c.recaptchaKey = $('#recaptchaKey').value.trim();
   c.groqKey = $('#groqKey').value.trim(); c.geminiKey = $('#geminiKey').value.trim();
   c.models = { gemini:$('#mGemini').value.trim() || O.defaults.models.gemini, llama:$('#mLlama').value.trim() || O.defaults.models.llama, gpt:$('#mGpt').value.trim() || O.defaults.models.gpt };
-  c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value; c.fbConfig = $('#fbConfig').value.trim();
+  c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value;
   c.voice = $('#voiceOn').checked; c.wake = $('#wakeOn').checked;
   if(c.cityKey === 'geo'){
     try{ c.geo = await O.geoLocate(); }catch(err){ toast(err.message); c.cityKey = 'tokyo'; }
   }
   O.saveCfg(); dlg.close(); refreshPills(); pickBrain(); log('sys', '設定を保存');
   if(c.wake) startWake(); else stopWake();
-  if(c.fbConfig !== oldFb || c.recaptchaKey !== oldRk){ toast('Firebaseの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
+  if(c.recaptchaKey !== oldRk){ toast('reCAPTCHAの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
   if(c.cityKey !== oldCity || c.cityKey === 'geo') loadWeather();
   if(!hadKey && O.anyKey()){ toast('保存しました。実際のモデルで動きます'); await loadNews(true); loadFeed(); }
   else toast(O.anyKey() ? '保存しました' : '保存しました（キー未設定のためデモモード）');

@@ -227,9 +227,8 @@
     <label class="switch"><input type="checkbox" id="voiceOn"> Jarvisの返答を音声で読み上げる</label>
     <label class="switch"><input type="checkbox" id="wakeOn"> 「ジャービス」「オービット」で呼びかけて起動（このタブを開いている間、マイクを使い続けます）</label>
 
-    <h5>Firebase（Googleログインとデータ同期）</h5>
-    <label for="fbConfig">firebaseConfig（コンソールからコピーしたものをそのまま貼る）</label>
-    <textarea class="field" id="fbConfig" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }'></textarea>
+    <h5>reCAPTCHA（任意）</h5>
+    <p class="note" style="margin:6px 0 0">firebaseConfigはこの画面ではなく、コードの <code>js/firebase-config.js</code> に書きます。</p>
     <label for="recaptchaKey">reCAPTCHA v3 サイトキー（App Check用。使うときだけ）</label>
     <input class="field" id="recaptchaKey" autocomplete="off" placeholder="6L...">
 

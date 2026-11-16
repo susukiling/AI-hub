@@ -79,12 +79,12 @@ function dropToken(){
 O.dropToken = dropToken;
 
 /* ---------- Firebase Auth ---------- */
-O.fbReady = false; O.user = null;
+O.fbReady = false; O.user = null; O.fbProblem = '';
 O.initFirebase = function(){
-  if(typeof firebase === 'undefined') return false;
-  const raw = (O.cfg.fbConfig || '').trim();
-  const conf = raw ? O.parseLooseJSON(raw) : window.FIREBASE_CONFIG;
-  if(!conf || !conf.apiKey) return false;
+  if(location.protocol === 'file:'){ O.fbProblem = 'ファイルとして開いているため、Googleログインは使えません。GitHub Pagesか http://localhost で開いてください'; return false; }
+  if(typeof firebase === 'undefined'){ O.fbProblem = 'FirebaseのSDKを読み込めませんでした。通信状況を確認してください'; return false; }
+  const conf = window.FIREBASE_CONFIG;
+  if(!conf || !conf.apiKey){ O.fbProblem = 'js/firebase-config.js に firebaseConfig が入っていません'; return false; }
   try{
     if(!firebase.apps.length) firebase.initializeApp(conf);
     const rk = (O.cfg.recaptchaKey || window.RECAPTCHA_SITE_KEY || '').trim();
@@ -96,15 +96,24 @@ O.initFirebase = function(){
     O.fbReady = true;
     O.auth.onAuthStateChanged(u => { O.user = u; if(O.onAuth) O.onAuth(u); });
     return true;
-  }catch(e){ console.error(e); return false; }
+  }catch(e){ console.error(e); O.fbProblem = 'Firebaseの初期化に失敗しました: ' + (e.code || e.message); return false; }
 };
+/* ログイン（名前とメールだけ。ここは機密性の高い権限を求めないので、設定が合っていれば通る） */
 O.signIn = async function(){
-  if(!O.fbReady) throw new Error('Firebaseの設定が未入力です');
+  if(!O.fbReady) throw new Error(O.fbProblem || 'ログインの準備ができていません');
+  const p = new firebase.auth.GoogleAuthProvider();
+  p.setCustomParameters({ prompt:'select_account' });
+  return (await O.auth.signInWithPopup(p)).user;
+};
+/* ログイン済みのアカウントに、カレンダーとフォトの権限を追加で許可してもらう */
+O.connectGoogle = async function(){
+  if(!O.fbReady || !O.user) throw new Error('先にGoogleでログインしてください');
   const p = new firebase.auth.GoogleAuthProvider();
   O.SCOPES.forEach(s => p.addScope(s));
-  const res = await O.auth.signInWithPopup(p);
+  const res = await O.user.reauthenticateWithPopup(p);
   const cred = res.credential;
-  if(cred && cred.accessToken) saveToken(cred.accessToken);
+  if(!(cred && cred.accessToken)) throw new Error('アクセス権のトークンを受け取れませんでした');
+  saveToken(cred.accessToken);
   return res.user;
 };
 O.signOut = async function(){

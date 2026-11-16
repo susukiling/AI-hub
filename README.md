@@ -33,11 +33,17 @@
 2. Authentication → Sign-in method で **Google** を有効にする
 3. Authentication → 設定 → 承認済みドメインに、公開するドメイン（例: `susukiling.github.io`）を追加する
 4. Firestore Database を作成し、`firestore.rules` の内容をルールに貼って公開する
-5. プロジェクトの設定 → マイアプリ（ウェブ）の `firebaseConfig` を、アプリの設定画面か `js/firebase-config.js` に貼る
+5. プロジェクトの設定 → マイアプリ（ウェブ）の `firebaseConfig` を、**コードの `js/firebase-config.js`** に貼る（アプリの設定画面には入力欄がありません）
 6. [Google Cloud コンソール](https://console.cloud.google.com/)の同じプロジェクトで次を有効にする
    - Google Calendar API
    - Google Photos Picker API
 7. OAuth同意画面にスコープ `calendar.events` と `photospicker.mediaitems.readonly` を追加する。公開前の「テスト」状態では、使う人のGoogleアカウントを「テストユーザー」に登録する
+
+ログインは2段階です。
+1. 「Googleでログイン」: 名前とメールだけを使います。ここは手順2・3が済んでいれば通ります。
+2. 「カレンダーと連携」: ログイン後に、カレンダーとフォトの権限を追加で許可します。手順6・7が必要です。連携は約1時間で切れるので、切れたらもう一度押します。
+
+ログインに失敗したときは、画面に原因を表示します（承認済みドメインの未登録、Googleログインが無効、ポップアップのブロックなど）。ファイルを直接開く（`file://`）とログインできません。GitHub Pagesか `http://localhost` で開いてください。
 
 同期されるのは、タスク・提案フィード・利用時間・今日の一言だけです。**APIキーは同期されず、このブラウザにだけ残ります。**
 

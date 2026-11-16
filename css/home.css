@@ -137,3 +137,6 @@ dialog h5{margin:20px 0 0;font:600 11px var(--font-display);letter-spacing:.16em
 @media (prefers-reduced-motion:reduce){
   *,*::before,*::after{animation:none!important;transition:none!important}
 }
+
+.err-note{color:var(--amber)!important}
+dialog code{font:500 11.5px var(--font-mono);padding:1px 6px;border-radius:6px;background:rgba(255,255,255,.1)}
