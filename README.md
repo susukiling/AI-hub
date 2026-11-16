@@ -51,10 +51,15 @@
 
 | 方法 | キーの場所 | 向いている使い方 |
 |---|---|---|
+| Firebase AI Logic（Geminiだけ） | Firebase側。鍵の入力は不要 | Geminiを鍵なしで使う。`js/firebase-config.js` が入っていて、FirebaseコンソールでAI Logic（Gemini Developer API）を有効にしてあれば自動で使われます |
 | 設定画面に貼る | 自分のブラウザだけ | 自分専用 |
 | 共有プロキシ（Cloudflare Workers） | Workerの暗号化された変数 | 友だちや家族にも使わせる |
 
 設定の「このブラウザにキーを保存する」で、キーを残すかどうかを選べます。オンなら次回も入力不要、オフならタブを閉じると消えます。
+Geminiの呼び出し順は、①設定画面に貼った自分のキー → ②Firebase AI Logic → ③共有プロキシ、です。AI Logicが使えるなら、Workerに `GEMINI_API_KEY` を登録しなくても動きます（Groq用のプロキシだけ残せます）。
+Llama・GPT-OSS（Groq）はAI Logicの対象外なので、鍵を入れるかプロキシが必要です。鍵がない間、AI Teamの実行役はGeminiが代わりに務めます。
+ニュースの「Google検索の候補」は、Google検索の利用条件で表示が必須なので、画面に出しています。
+
 GitHubのActions secretsは、公開サイトのコードにキーを埋め込む使い方では守れません（完成したJavaScriptに入るため）。代わりに下のプロキシを使います。
 
 ## 共有プロキシ（Cloudflare Workers）

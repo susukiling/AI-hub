@@ -60,7 +60,9 @@ O.ownKey = p => p === 'groq' ? !!(O.cfg.groqKey || '').trim() : !!(O.cfg.geminiK
 /* 共有プロキシ（Cloudflare Workers）: 自分のキーが無くても、Googleログイン中なら使える */
 O.proxyUrl = () => (O.cfg.proxyUrl || window.ORBIT_PROXY_URL || '').trim().replace(/\/+$/, '');
 O.proxyOn = () => !!O.proxyUrl() && !!O.user;
-O.hasKey = p => O.ownKey(p) || O.proxyOn();
+/* Gemini は、Firebase AI Logic が使えるなら鍵なしで呼べる（鍵はFirebase側が持つ）。services.js が準備する */
+O.aiReady = false;
+O.hasKey = p => O.ownKey(p) || O.proxyOn() || (p === 'gemini' && O.aiReady);
 O.anyKey = () => O.hasKey('groq') || O.hasKey('gemini');
 /* キーが無いプロバイダのエージェントは、キーのある別のエージェントが代わりに動く */
 O.resolve = id => {
@@ -129,6 +131,8 @@ async function callGroq(model, o){
   return { text:t, sources:[] };
 }
 async function callGemini(model, o){
+  // 呼び出しの優先順: 自分のキー → Firebase AI Logic（鍵なし） → 共有プロキシ
+  if(!O.ownKey('gemini') && O.aiReady) return O.aiGenerate(model, o);
   const body = {
     contents:o.messages.map(m => ({ role:m.role === 'assistant' ? 'model' : 'user', parts:[{ text:m.content }] })),
     generationConfig:{ temperature:o.temperature ?? 0.7 }
@@ -148,18 +152,19 @@ async function callGemini(model, o){
   if(!text) throw new Error('Gemini: 空の応答（安全フィルタの可能性）');
   const chunks = (cand.groundingMetadata && cand.groundingMetadata.groundingChunks) || [];
   const sources = chunks.map(c => c.web).filter(Boolean).map(w => ({ title:w.title || w.uri, uri:w.uri }));
-  return { text, sources };
+  const suggest = (cand.groundingMetadata && cand.groundingMetadata.searchEntryPoint && cand.groundingMetadata.searchEntryPoint.renderedContent) || '';
+  return { text, sources, suggest };
 }
 O.callAI = async function(want, o){
   let id = O.resolve(want);
   if(o.search) id = O.hasKey('gemini') ? 'gemini' : null;      // Web検索つきの回答はGeminiだけ
   if(!id){
     await O.sleep(700 + Math.random() * 700);
-    return { agent:want, text:O.demoText(want, o), demo:true, sources:[] };
+    return { agent:want, text:O.demoText(want, o), demo:true, sources:[], suggest:'' };
   }
   const a = O.AGENTS[id], model = O.cfg.models[id];
   const r = a.provider === 'groq' ? await callGroq(model, o) : await callGemini(model, o);
-  return { agent:id, text:r.text, demo:false, sources:r.sources };
+  return { agent:id, text:r.text, demo:false, sources:r.sources, suggest:r.suggest || '' };
 };
 
 /* ---------- demo mode ---------- */

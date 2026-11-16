@@ -375,7 +375,7 @@ async function loadNews(force){
     if(!items.length) items = [{ title:r.text.trim().slice(0, 120), summary:'' }];
     const seen = new Set(); const sources = [];
     r.sources.forEach(s => { if(s.uri && !seen.has(s.uri) && sources.length < 5){ seen.add(s.uri); sources.push(s); } });
-    O.state.news = { at:Date.now(), demo:false, items, sources }; store.set('news', O.state.news);
+    O.state.news = { at:Date.now(), demo:false, items, sources, suggest:r.suggest || '' }; store.set('news', O.state.news);
     renderNews(); log('gemini', `ニュースを${items.length}件取得`);
   }catch(e){ renderNews('error', e.message); log('sys', 'ニュース取得失敗: ' + e.message); }
   finally{ $('#newsRefresh').disabled = false; }
@@ -395,6 +395,12 @@ function renderNews(mode, msg){
     const s = el('div', 'srcs');
     n.sources.forEach(x => { const a = el('a', '', x.title); a.href = x.uri; a.target = '_blank'; a.rel = 'noopener noreferrer'; s.append(a); });
     box.append(s);
+  }
+  // Google検索の利用条件で、検索候補（Googleが返すHTML）の表示が必須。外部のHTMLなので、隔離したiframeに入れる
+  if(n.suggest){
+    const f = el('iframe', 'sg'); f.title = 'Google検索の候補';
+    f.setAttribute('sandbox', 'allow-popups allow-popups-to-escape-sandbox'); f.srcdoc = n.suggest;
+    box.append(f);
   }
 }
 $('#newsRefresh').addEventListener('click', () => loadNews(true));
@@ -749,7 +755,7 @@ $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); open
    ========================================================= */
 function refreshPills(){
   const g = $('#pillGroq'), m = $('#pillGemini');
-  const st = p => O.ownKey(p) ? '自分のキー' : O.proxyOn() ? '共有' : '未設定';
+  const st = p => O.ownKey(p) ? '自分のキー' : (p === 'gemini' && O.aiReady) ? 'AI Logic' : O.proxyOn() ? '共有' : '未設定';
   g.classList.toggle('on', O.hasKey('groq')); m.classList.toggle('on', O.hasKey('gemini'));
   g.textContent = 'Groq ' + st('groq');
   m.textContent = 'Gemini ' + st('gemini');
@@ -817,10 +823,16 @@ function updateHello(){
   if(!fb) updateAccount();
   if(O.cfg.wake) startWake();
 
-  addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null });
-  log('sys', O.anyKey() ? '起動（APIキー設定済み）' : '起動（デモモード）');
-
-  Promise.allSettled([loadWeather(), loadNews(false), O.user ? loadEvents() : Promise.resolve()]).then(() => {
+  log('sys', '起動');
+  loadWeather();
+  // Gemini用のFirebase AI Logic（鍵なし）を先に準備してから、AIを使う処理を始める
+  O.initAI().catch(() => false).then(() => {
+    refreshPills(); pickBrain(); aiWas = O.anyKey();
+    if(O.aiReady) log('gemini', 'Firebase AI Logic に接続しました（鍵なしでGeminiが使えます）');
+    else if(O.aiProblem) log('sys', O.aiProblem);
+    addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null });
+    return Promise.allSettled([loadNews(false), O.user ? loadEvents() : Promise.resolve()]);
+  }).then(() => {
     const at = store.get('feedAt', 0);
     const stale = !at || Date.now() - at > 6 * 3600e3 || new Date(at).toDateString() !== new Date().toDateString();
     if(!feed.length || (O.anyKey() && stale)) loadFeed();

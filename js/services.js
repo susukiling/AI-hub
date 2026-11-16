@@ -56,6 +56,48 @@ O.geoLocate = () => new Promise((res, rej) => {
     { timeout:8000 });
 });
 
+/* ---------- Firebase AI Logic（Geminiを鍵なしで使う） ----------
+   AI LogicのSDKはモジュール形式だけなので、必要になった時点でgstatic(Google)から読み込む。
+   Firebaseコンソールで AI Logic を有効にし、Gemini Developer API を選んであることが前提。 */
+const FIREBASE_MODULAR = '12.14.0';
+O.aiProblem = '';
+O.initAI = async function(){
+  const conf = window.FIREBASE_CONFIG;
+  if(location.protocol === 'file:' || !conf || !conf.apiKey) return false;
+  try{
+    const base = `https://www.gstatic.com/firebasejs/${FIREBASE_MODULAR}/`;
+    const [appM, aiM] = await Promise.all([import(base + 'firebase-app.js'), import(base + 'firebase-ai.js')]);
+    const app = appM.getApps().find(a => a.name === 'orbit-ai') || appM.initializeApp(conf, 'orbit-ai');
+    O._ai = { M:aiM, inst:aiM.getAI(app, { backend:new aiM.GoogleAIBackend() }) };
+    O.aiReady = true;
+    return true;
+  }catch(e){
+    console.error(e); O.aiProblem = 'Firebase AI Logicを読み込めませんでした: ' + (e.code || e.message);
+    return false;
+  }
+};
+O.aiGenerate = async function(model, o){
+  const { M, inst } = O._ai;
+  const gc = { temperature:o.temperature ?? 0.7 };
+  const params = { model, generationConfig:gc };
+  if(o.system) params.systemInstruction = o.system;
+  if(o.search) params.tools = [{ googleSearch:{} }];            // 検索連携とJSONモードは併用しない
+  else if(o.json) gc.responseMimeType = 'application/json';
+  const m = M.getGenerativeModel(inst, params);
+  let res;
+  try{
+    res = await m.generateContent({ contents:o.messages.map(x => ({ role:x.role === 'assistant' ? 'model' : 'user', parts:[{ text:x.content }] })) });
+  }catch(e){
+    throw new Error('Gemini(AI Logic): ' + String(e.message || e.code || e).slice(0, 240));
+  }
+  let text = '';
+  try{ text = res.response.text(); }catch(e){ throw new Error('Gemini(AI Logic): ' + String(e.message || e).slice(0, 200)); }
+  if(!text) throw new Error('Gemini(AI Logic): 空の応答（安全フィルタの可能性）');
+  const gm = res.response.candidates && res.response.candidates[0] && res.response.candidates[0].groundingMetadata;
+  const sources = ((gm && gm.groundingChunks) || []).map(c => c.web).filter(Boolean).map(w => ({ title:w.title || w.uri, uri:w.uri }));
+  return { text, sources, suggest:(gm && gm.searchEntryPoint && gm.searchEntryPoint.renderedContent) || '' };
+};
+
 /* ---------- Google token ---------- */
 O.SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
