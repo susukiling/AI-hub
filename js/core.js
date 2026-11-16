@@ -157,6 +157,26 @@ async function callGemini(model, o){
   const suggest = (cand.groundingMetadata && cand.groundingMetadata.searchEntryPoint && cand.groundingMetadata.searchEntryPoint.renderedContent) || '';
   return { text, sources, suggest };
 }
+/* Geminiのモデル名が終了・未提供（404など）のときは、次の候補を試し、通ったものを設定に覚える */
+O.GEMINI_FALLBACK = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'];
+async function callGeminiWithFallback(model, o){
+  const cands = [model, ...O.GEMINI_FALLBACK.filter(m => m !== model)].slice(0, 4);
+  let lastErr;
+  for(const m of cands){
+    try{
+      const r = await callGemini(m, o);
+      if(m !== model){
+        O.cfg.models.gemini = m; O.saveCfg();
+        O.log('sys', `Geminiのモデルを ${model} から ${m} に切り替えました`);
+      }
+      return r;
+    }catch(e){
+      lastErr = e;
+      if(!/404|no longer available|not found|not supported|is not available/i.test(e.message)) throw e;
+    }
+  }
+  throw lastErr;
+}
 O.callAI = async function(want, o){
   let id = O.resolve(want);
   if(o.search) id = O.hasKey('gemini') ? 'gemini' : null;      // Web検索つきの回答はGeminiだけ
@@ -165,7 +185,7 @@ O.callAI = async function(want, o){
     return { agent:want, text:O.demoText(want, o), demo:true, sources:[], suggest:'' };
   }
   const a = O.AGENTS[id], model = O.cfg.models[id];
-  const r = a.provider === 'groq' ? await callGroq(model, o) : await callGemini(model, o);
+  const r = a.provider === 'groq' ? await callGroq(model, o) : await callGeminiWithFallback(model, o);
   return { agent:id, text:r.text, demo:false, sources:r.sources, suggest:r.suggest || '' };
 };
 
