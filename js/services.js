@@ -87,6 +87,11 @@ O.initFirebase = function(){
   if(!conf || !conf.apiKey) return false;
   try{
     if(!firebase.apps.length) firebase.initializeApp(conf);
+    const rk = (O.cfg.recaptchaKey || window.RECAPTCHA_SITE_KEY || '').trim();
+    if(rk && firebase.appCheck){
+      try{ firebase.appCheck().activate(new firebase.appCheck.ReCaptchaV3Provider(rk), true); O.appCheckReady = true; }
+      catch(e){ console.error(e); }
+    }
     O.auth = firebase.auth(); O.db = firebase.firestore();
     O.fbReady = true;
     O.auth.onAuthStateChanged(u => { O.user = u; if(O.onAuth) O.onAuth(u); });

@@ -23,14 +23,31 @@ O.CITIES = {
   naha:   { name:'那覇',   lat:26.2124, lon:127.6809 }
 };
 const defaults = {
-  groqKey:'', geminiKey:'', voice:true, wake:false, profile:'',
+  groqKey:'', geminiKey:'', rememberKeys:true, proxyUrl:'', recaptchaKey:'',
+  voice:true, wake:false, profile:'',
   cityKey:'tokyo', geo:null, fbConfig:'',
   models:{ gemini:'gemini-2.5-flash', llama:'llama-3.3-70b-versatile', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
 O.cfg.models = Object.assign({}, defaults.models, O.cfg.models || {});
-O.saveCfg = () => O.store.set('cfg', O.cfg);
+/* APIキーは設定本体とは別の入れ物に保存する。
+   「このブラウザに保存する」をオフにすると、タブを閉じるまでしか残さない。 */
+function readKeys(){
+  for(const st of [localStorage, sessionStorage]){
+    try{ const v = st.getItem('orbit.keys'); if(v) return JSON.parse(v); }catch(e){}
+  }
+  return {};
+}
+const savedKeys = readKeys();
+O.cfg.groqKey = savedKeys.groqKey || O.cfg.groqKey || '';
+O.cfg.geminiKey = savedKeys.geminiKey || O.cfg.geminiKey || '';
+O.saveCfg = function(){
+  const { groqKey, geminiKey, ...rest } = O.cfg;
+  O.store.set('cfg', rest);
+  try{ localStorage.removeItem('orbit.keys'); sessionStorage.removeItem('orbit.keys'); }catch(e){}
+  try{ (O.cfg.rememberKeys !== false ? localStorage : sessionStorage).setItem('orbit.keys', JSON.stringify({ groqKey, geminiKey })); }catch(e){}
+};
 O.city = () => (O.cfg.cityKey === 'geo' && O.cfg.geo) ? O.cfg.geo : (O.CITIES[O.cfg.cityKey] || O.CITIES.tokyo);
 
 O.AGENTS = {
@@ -38,7 +55,11 @@ O.AGENTS = {
   llama: { name:'Llama',   provider:'groq' },
   gpt:   { name:'GPT-OSS', provider:'groq' }
 };
-O.hasKey = p => p === 'groq' ? !!(O.cfg.groqKey || '').trim() : !!(O.cfg.geminiKey || '').trim();
+O.ownKey = p => p === 'groq' ? !!(O.cfg.groqKey || '').trim() : !!(O.cfg.geminiKey || '').trim();
+/* 共有プロキシ（Cloudflare Workers）: 自分のキーが無くても、Googleログイン中なら使える */
+O.proxyUrl = () => (O.cfg.proxyUrl || window.ORBIT_PROXY_URL || '').trim().replace(/\/+$/, '');
+O.proxyOn = () => !!O.proxyUrl() && !!O.user;
+O.hasKey = p => O.ownKey(p) || O.proxyOn();
 O.anyKey = () => O.hasKey('groq') || O.hasKey('gemini');
 /* キーが無いプロバイダのエージェントは、キーのある別のエージェントが代わりに動く */
 O.resolve = id => {
@@ -92,14 +113,25 @@ async function errText(r){
   let m = ''; try{ const j = await r.json(); m = (j.error && j.error.message) || JSON.stringify(j); }catch(e){ m = await r.text().catch(() => ''); }
   return `HTTP ${r.status} ${String(m).slice(0, 220)}`;
 }
+async function proxyFetch(path, payload){
+  const tok = await O.user.getIdToken();
+  const h = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok };
+  if(O.appCheckReady){
+    try{ const t = await firebase.appCheck().getToken(); if(t && t.token) h['X-Firebase-AppCheck'] = t.token; }catch(e){}
+  }
+  return fetch(O.proxyUrl() + path, { method:'POST', headers:h, body:JSON.stringify(payload) });
+}
 async function callGroq(model, o){
   const msgs = []; if(o.system) msgs.push({ role:'system', content:o.system });
   msgs.push(...o.messages);
-  const r = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-    method:'POST',
-    headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + O.cfg.groqKey.trim() },
-    body:JSON.stringify({ model, messages:msgs, temperature:o.temperature ?? 0.7 })
-  });
+  const payload = { model, messages:msgs, temperature:o.temperature ?? 0.7 };
+  const r = O.ownKey('groq')
+    ? await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method:'POST',
+        headers:{ 'Content-Type':'application/json', 'Authorization':'Bearer ' + O.cfg.groqKey.trim() },
+        body:JSON.stringify(payload)
+      })
+    : await proxyFetch('/v1/groq', payload);
   if(!r.ok) throw new Error('Groq: ' + await errText(r));
   const j = await r.json();
   const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
@@ -114,8 +146,10 @@ async function callGemini(model, o){
   if(o.system) body.systemInstruction = { parts:[{ text:o.system }] };
   if(o.search) body.tools = [{ google_search:{} }];            // 検索連携とJSONモードは併用しない
   else if(o.json) body.generationConfig.responseMimeType = 'application/json';
-  const url = `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(O.cfg.geminiKey.trim())}`;
-  const r = await fetch(url, { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) });
+  const r = O.ownKey('gemini')
+    ? await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(O.cfg.geminiKey.trim())}`,
+        { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) })
+    : await proxyFetch('/v1/gemini', { model, body });
   if(!r.ok) throw new Error('Gemini: ' + await errText(r));
   const j = await r.json();
   const cand = j.candidates && j.candidates[0];

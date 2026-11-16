@@ -41,6 +41,43 @@
 
 同期されるのは、タスク・提案フィード・利用時間・今日の一言だけです。**APIキーは同期されず、このブラウザにだけ残ります。**
 
+## APIキーの置き方
+
+| 方法 | キーの場所 | 向いている使い方 |
+|---|---|---|
+| 設定画面に貼る | 自分のブラウザだけ | 自分専用 |
+| 共有プロキシ（Cloudflare Workers） | Workerの暗号化された変数 | 友だちや家族にも使わせる |
+
+設定の「このブラウザにキーを保存する」で、キーを残すかどうかを選べます。オンなら次回も入力不要、オフならタブを閉じると消えます。
+GitHubのActions secretsは、公開サイトのコードにキーを埋め込む使い方では守れません（完成したJavaScriptに入るため）。代わりに下のプロキシを使います。
+
+## 共有プロキシ（Cloudflare Workers）
+
+ブラウザ → Worker（キーはここだけ） → Groq / Gemini。Googleログインした人だけが通れて、1人あたり1日の回数にも上限があります。
+
+1. Cloudflareの無料アカウントを作り、Node.jsを入れる
+2. `cd cloudflare`
+3. `npx wrangler kv namespace create RATE` を実行し、出力されたidを `wrangler.toml` の `YOUR_KV_NAMESPACE_ID` に貼る
+4. `wrangler.toml` の `FIREBASE_PROJECT_ID` と `ALLOWED_ORIGINS`（例: `https://susukiling.github.io`）を自分の値にする
+5. キーを暗号化して登録する
+   ```
+   npx wrangler secret put GROQ_API_KEY
+   npx wrangler secret put GEMINI_API_KEY
+   ```
+6. `npx wrangler deploy` を実行すると、WorkerのURLが表示される
+7. そのURLを `js/firebase-config.js` の `ORBIT_PROXY_URL`、またはアプリの設定画面に入れる
+
+調整できる項目（`wrangler.toml` の `[vars]`）:
+- `DAILY_LIMIT`: 1人あたり1日の回数（初期値200）
+- `ALLOWED_EMAILS`: 使える人のメールアドレスを絞る
+- `GROQ_MODELS` / `GEMINI_MODELS`: 許可するモデル名（カンマ区切り）。初期値にないモデルは、ここに足さないと拒否されます
+- `APPCHECK_PROJECT_NUMBER`: reCAPTCHA（App Check）を必須にする。FirebaseでApp Checkを有効にし、reCAPTCHA v3のサイトキーを `RECAPTCHA_SITE_KEY` に入れます
+
+注意:
+- 手元のファイルをそのまま開く（`file://`）と、Workerに拒否されます。GitHub Pagesか、`http://localhost:8000` を `ALLOWED_ORIGINS` に足したローカルサーバーで開いてください。
+- 回数の記録にはKVを使います。KVの無料枠は書き込み回数に上限があるため（1日1,000回前後）、全員の合計で1日あたりそのくらいが目安です。Cloudflareの現在の無料枠で確認してください。
+- 認証・回数制限・許可サイトの判定は、模擬トークンで `cd cloudflare && npm test` により確認済みです。Cloudflare上での実際の動作は未確認です。
+
 ## 公開（GitHub Pages）
 
 リポジトリの Settings → Pages で、ブランチ `main` のルートを公開します。
@@ -50,7 +87,8 @@
 - **スクリーンタイム**: ブラウザからは端末全体（iOSのスクリーンタイム、AndroidのDigital Wellbeing）を読めません。OSの値を手入力するか、将来のネイティブアプリ版（Android: UsageStatsManager）で自動取得します。
 - **フォト**: Googleの仕様変更（2025年）で、アプリはライブラリ全体を読めず、ピッカーで「その場で選んだ写真」だけ読めます。
 - **カレンダーとフォトの接続は約1時間で切れます**（ブラウザ内のアクセストークンのため）。切れたら「再接続」を押してください。
-- **APIキーはブラウザ内に保存**され、各社のAPIへ直接送られます。自分専用の使い方向けです。複数人に配る場合は、Firebase Functionsなどサーバー側でキーを持って中継する構成にしてください。
+- 設定画面に貼ったAPIキーは、ブラウザ内に保存され、各社のAPIへ直接送られます。自分専用の使い方向けです。複数人に配る場合は、上の共有プロキシを使ってください。
+- **キーをコードやリポジトリに書かないでください。** 公開リポジトリでは誰でも読めます。reCAPTCHAでも、コードに書いたキーは守れません。
 - ニュースはGeminiのGoogle検索連携を使います。この機能の利用条件（検索候補の表示など）はGoogleの規約に従ってください。
 - 「GPT」はGroqで動くオープンモデル `gpt-oss-120b` です。モデル名は設定で変えられます。
 

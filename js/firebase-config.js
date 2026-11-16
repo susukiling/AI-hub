@@ -1,6 +1,8 @@
-// Firebaseコンソール → プロジェクトの設定 → マイアプリ(ウェブ) の firebaseConfig をここに貼ると、
-// 全員が同じ設定でGoogleログインできます。空のままなら、アプリの「設定」画面に貼った値を使います。
-// firebaseConfigは公開されても問題ない値です（守るのはFirestoreのルールと、承認済みドメインの設定）。
+// 公開しても問題ない設定値の置き場です（AIのAPIキー〈Groq・Gemini〉は、ここに書かないでください）。
+//
+// ■ Firebase: コンソール → プロジェクトの設定 → マイアプリ(ウェブ) の firebaseConfig。
+//   firebaseConfigは公開されても問題ない値です（守るのはFirestoreのルールと、承認済みドメインの設定）。
+//   空にした場合は、アプリの「設定」画面に貼った値を使います。
 window.FIREBASE_CONFIG = {
   apiKey: "AIzaSyAWkbqTkw694kENn0j4seAm-T9o6ManOoI",
   authDomain: "ai-hub-00.firebaseapp.com",
@@ -9,10 +11,11 @@ window.FIREBASE_CONFIG = {
   messagingSenderId: "275342734734",
   appId: "1:275342734734:web:86145132dca11534aa20df"
 };
-// 例:
-// window.FIREBASE_CONFIG = {
-//   apiKey: "...",
-//   authDomain: "your-project.firebaseapp.com",
-//   projectId: "your-project",
-//   appId: "..."
-// };
+
+// ■ 共有プロキシ: cloudflare/ のWorkerをデプロイしたURL。
+//   入れておくと、自分のキーを持たない人もGoogleログインだけでAIを使えます。
+window.ORBIT_PROXY_URL = '';
+// window.ORBIT_PROXY_URL = 'https://orbit-proxy.xxxx.workers.dev';
+
+// ■ reCAPTCHA v3 のサイトキー（Firebase App Check用。サイトキーは公開値です）。
+window.RECAPTCHA_SITE_KEY = '';

@@ -295,10 +295,14 @@ function updateAccount(){
   }
   updateHello();
 }
+let aiWas = O.anyKey();
 O.onAuth = u => {
-  updateAccount();
-  if(u){ log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); loadEvents(); renderPhotos(); }
-  else { O.state.events = null; renderEvents(); renderPhotos(); }
+  updateAccount(); refreshPills();
+  if(u){
+    log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); loadEvents(); renderPhotos();
+    if(!aiWas && O.anyKey()){ log('sys', '共有プロキシ経由でAIが使えるようになりました'); loadNews(true); loadFeed(); }
+  }else{ O.state.events = null; renderEvents(); renderPhotos(); }
+  aiWas = O.anyKey();
 };
 O.onRemoteState = () => {
   tasks = store.get('tasks', []); feed = store.get('feed', []);
@@ -705,9 +709,10 @@ $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); open
    ========================================================= */
 function refreshPills(){
   const g = $('#pillGroq'), m = $('#pillGemini');
+  const st = p => O.ownKey(p) ? '自分のキー' : O.proxyOn() ? '共有' : '未設定';
   g.classList.toggle('on', O.hasKey('groq')); m.classList.toggle('on', O.hasKey('gemini'));
-  g.textContent = 'Groq ' + (O.hasKey('groq') ? '設定済み' : '未設定');
-  m.textContent = 'Gemini ' + (O.hasKey('gemini') ? '設定済み' : '未設定');
+  g.textContent = 'Groq ' + st('groq');
+  m.textContent = 'Gemini ' + st('gemini');
   $('#pillDemo').style.display = O.anyKey() ? 'none' : '';
 }
 function pickBrain(){
@@ -721,13 +726,15 @@ function openSettings(){
   $('#groqKey').value = c.groqKey; $('#geminiKey').value = c.geminiKey;
   $('#mGemini').value = c.models.gemini; $('#mLlama').value = c.models.llama; $('#mGpt').value = c.models.gpt;
   $('#profile').value = c.profile; $('#cityKey').value = c.cityKey; $('#fbConfig').value = c.fbConfig;
+  $('#rememberKeys').checked = c.rememberKeys !== false; $('#proxyUrl').value = c.proxyUrl; $('#recaptchaKey').value = c.recaptchaKey;
   $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
   dlg.showModal();
 }
 $('#cancelSettings').addEventListener('click', () => dlg.close());
 $('#settingsForm').addEventListener('submit', async e => {
   e.preventDefault();
-  const c = O.cfg; const hadKey = O.anyKey(); const oldFb = c.fbConfig; const oldCity = c.cityKey;
+  const c = O.cfg; const hadKey = O.anyKey(); const oldFb = c.fbConfig; const oldCity = c.cityKey; const oldRk = c.recaptchaKey;
+  c.rememberKeys = $('#rememberKeys').checked; c.proxyUrl = $('#proxyUrl').value.trim(); c.recaptchaKey = $('#recaptchaKey').value.trim();
   c.groqKey = $('#groqKey').value.trim(); c.geminiKey = $('#geminiKey').value.trim();
   c.models = { gemini:$('#mGemini').value.trim() || O.defaults.models.gemini, llama:$('#mLlama').value.trim() || O.defaults.models.llama, gpt:$('#mGpt').value.trim() || O.defaults.models.gpt };
   c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value; c.fbConfig = $('#fbConfig').value.trim();
@@ -737,7 +744,7 @@ $('#settingsForm').addEventListener('submit', async e => {
   }
   O.saveCfg(); dlg.close(); refreshPills(); pickBrain(); log('sys', '設定を保存');
   if(c.wake) startWake(); else stopWake();
-  if(c.fbConfig !== oldFb){ toast('Firebaseの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
+  if(c.fbConfig !== oldFb || c.recaptchaKey !== oldRk){ toast('Firebaseの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
   if(c.cityKey !== oldCity || c.cityKey === 'geo') loadWeather();
   if(!hadKey && O.anyKey()){ toast('保存しました。実際のモデルで動きます'); await loadNews(true); loadFeed(); }
   else toast(O.anyKey() ? '保存しました' : '保存しました（キー未設定のためデモモード）');

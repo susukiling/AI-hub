@@ -1,0 +1,24 @@
+name = "orbit-proxy"
+main = "worker.js"
+compatibility_date = "2025-01-01"
+
+[vars]
+# FirebaseのプロジェクトID（firebaseConfigのprojectId）
+FIREBASE_PROJECT_ID = "ai-hub-00"
+# このWorkerを呼んでよいサイト。カンマ区切り。GitHub Pagesはパスなしのオリジンだけを書く
+ALLOWED_ORIGINS = "https://susukiling.github.io"
+# 1人あたり1日の上限回数
+DAILY_LIMIT = "200"
+# 使える人を絞るとき（Googleのメールアドレス、小文字、カンマ区切り）。空なら、ログインできる全員
+# ALLOWED_EMAILS = "you@example.com,friend@example.com"
+# reCAPTCHA（App Check）を必須にするときだけ。FirebaseのプロジェクトNUMBER（数字）
+# APPCHECK_PROJECT_NUMBER = "123456789012"
+
+# 1日の回数を数える入れ物。`npx wrangler kv namespace create RATE` で作ったidを貼る
+[[kv_namespaces]]
+binding = "RATE"
+id = "YOUR_KV_NAMESPACE_ID"
+
+# APIキーはここに書かない。次のコマンドで暗号化して登録する
+#   npx wrangler secret put GROQ_API_KEY
+#   npx wrangler secret put GEMINI_API_KEY

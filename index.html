@@ -203,12 +203,17 @@
     <input class="field" id="groqKey" type="password" autocomplete="off" placeholder="gsk_...">
     <label for="geminiKey">Gemini APIキー<a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener">取得</a></label>
     <input class="field" id="geminiKey" type="password" autocomplete="off" placeholder="AIza...">
+    <label class="switch"><input type="checkbox" id="rememberKeys"> このブラウザにキーを保存する（オフなら、タブを閉じると消えます）</label>
     <label>モデル名（変更可）</label>
     <div class="grid2">
       <div><label for="mGemini" style="margin-top:0">Gemini</label><input class="field" id="mGemini"></div>
       <div><label for="mLlama" style="margin-top:0">Llama（Groq）</label><input class="field" id="mLlama"></div>
       <div><label for="mGpt" style="margin-top:0">GPT-OSS（Groq）</label><input class="field" id="mGpt"></div>
     </div>
+
+    <h5>共有プロキシ（Cloudflare Workers）</h5>
+    <label for="proxyUrl">WorkerのURL（自分のキーが空でも、Googleログイン中ならAIが使えます）</label>
+    <input class="field" id="proxyUrl" type="url" autocomplete="off" placeholder="https://orbit-proxy.xxxx.workers.dev">
 
     <h5>あなたについて</h5>
     <label for="profile">プロフィール・口調・NG（毎回AIに渡します）</label>
@@ -225,6 +230,8 @@
     <h5>Firebase（Googleログインとデータ同期）</h5>
     <label for="fbConfig">firebaseConfig（コンソールからコピーしたものをそのまま貼る）</label>
     <textarea class="field" id="fbConfig" placeholder='{ apiKey: "...", authDomain: "...", projectId: "...", appId: "..." }'></textarea>
+    <label for="recaptchaKey">reCAPTCHA v3 サイトキー（App Check用。使うときだけ）</label>
+    <input class="field" id="recaptchaKey" autocomplete="off" placeholder="6L...">
 
     <div class="dlg-actions">
       <button class="btn" type="button" id="cancelSettings">閉じる</button>
@@ -236,6 +243,7 @@
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
 <script src="js/firebase-config.js"></script>
 <script src="js/core.js"></script>
