@@ -101,6 +101,7 @@ GitHubのActions secretsは、公開サイトのコードにキーを埋め込�
 - 設定画面に貼ったAPIキーは、ブラウザ内に保存され、各社のAPIへ直接送られます。自分専用の使い方向けです。複数人に配る場合は、上の共有プロキシを使ってください。
 - **キーをコードやリポジトリに書かないでください。** 公開リポジトリでは誰でも読めます。reCAPTCHAでも、コードに書いたキーは守れません。
 - ニュースはGeminiのGoogle検索連携を使います。この機能の利用条件（検索候補の表示など）はGoogleの規約に従ってください。
+- **モデル名は定期的に古くなります。** Geminiは `gemini-3.6-flash` を既定にしています。「このモデルは使えません」というエラーが出たら、設定画面のモデル名を、[Firebase AI Logicのモデル一覧](https://firebase.google.com/docs/ai-logic/models)にある新しい名前に変えてください。Cloudflare Workerを使っている場合は、`wrangler.toml` の `GEMINI_MODELS` にも同じ名前を足します。
 - 「GPT」はGroqで動くオープンモデル `gpt-oss-120b` です。モデル名は設定で変えられます。
 
 ## ファイル構成

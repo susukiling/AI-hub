@@ -30,7 +30,7 @@ const good=await token();
 const gbody={model:'llama-3.3-70b-versatile',messages:[{role:'user',content:'hi'}]};
 let r=await call('/v1/groq',gbody,{tok:good}); t('groq ok',r.status===200&&r.text.includes('hi')&&r.cors===ORIGIN,r.text);
 const gc=calls.filter(c=>c.url.includes('groq.com')).at(-1); t('groq key is added server-side',gc.opts.headers.Authorization==='Bearer gsk_secret');
-r=await call('/v1/gemini',{model:'gemini-2.5-flash',body:{contents:[{role:'user',parts:[{text:'x'}]}],tools:[{google_search:{}}],generationConfig:{temperature:.3}}},{tok:good});
+r=await call('/v1/gemini',{model:'gemini-3.6-flash',body:{contents:[{role:'user',parts:[{text:'x'}]}],tools:[{google_search:{}}],generationConfig:{temperature:.3}}},{tok:good});
 t('gemini ok',r.status===200&&r.text.includes('hello'),r.text);
 const mc=calls.filter(c=>c.url.includes('generativelanguage')).at(-1); t('gemini key in header, not url',mc.opts.headers['x-goog-api-key']==='AIza_secret'&&!mc.url.includes('AIza'));
 t('gemini search tool passed',JSON.parse(mc.opts.body).tools[0].google_search!==undefined);
