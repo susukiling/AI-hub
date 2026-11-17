@@ -19,3 +19,8 @@ window.ORBIT_PROXY_URL = '';
 
 // ■ reCAPTCHA v3 のサイトキー（Firebase App Check用。サイトキーは公開値です）。
 window.RECAPTCHA_SITE_KEY = '';
+
+// ■ Googleドライブのファイル選択（Picker）用。どちらも公開してよい値です。
+//   キーはHTTPリファラーとPicker APIに制限してあること（制限なしのキーは貼らないでください）。
+window.PICKER_API_KEY = 'AIzaSyCpBPM5JbYFj7SVaH6RfW4FX5PSKC1c4Js';
+window.GCP_PROJECT_NUMBER = '275342734734';

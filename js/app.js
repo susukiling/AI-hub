@@ -625,13 +625,15 @@ async function sendChat(text){
   if('speechSynthesis' in window) speechSynthesis.cancel();
   let content = text;
   att.texts.forEach(t => { content += `\n\n[添付ファイル: ${t.name}]\n${t.text}`; });
+  const dr = await O.drive.context();
+  if(dr.names.length) att.names.push('Drive: ' + dr.names.length + '件');
   addMsg('user', text, { att:att.names, thumbs:att.thumbs, nosave:true });
   O.hist.ensure('jarvis', text); O.hist.add({ role:'user', text, att:att.names });
   const um = { role:'user', content }; if(att.media.length) um.media = att.media;
   chatHist.push(um); setOrb('thinking');
   const sent = chatHist.slice(-12).map(m => m === um ? m : { role:m.role, content:m.content });
   try{
-    const res = await O.callAI(att.media.length ? 'gemini' : $('#brain').value, { system:jarvisPrompt(), messages:sent, json:true, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined });
+    const res = await O.callAI(att.media.length || dr.text ? 'gemini' : $('#brain').value, { system:jarvisPrompt() + dr.text, messages:sent, json:true, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined });
     const out = parseJarvis(res.text);
     delete um.media;
     chatHist.push({ role:'assistant', content:res.text });

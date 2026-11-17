@@ -101,7 +101,8 @@ O.aiGenerate = async function(model, o){
 /* ---------- Google token ---------- */
 O.SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
-  'https://www.googleapis.com/auth/photospicker.mediaitems.readonly'
+  'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
+  'https://www.googleapis.com/auth/drive.file'          // あなたがPickerで選んだファイルだけ
 ];
 O.google = { token:null, exp:0, get valid(){ return !!this.token && Date.now() < this.exp; } };
 (function loadToken(){
@@ -208,6 +209,7 @@ async function gfetch(url, opts, tok){
   if(!r.ok) throw new Error('Google API: HTTP ' + r.status);
   return r;
 }
+O.gfetch = gfetch;
 O.fetchEvents = async function(){
   const main = await fetchEventsWith(null, '');
   const extra = O.accounts.list.filter(O.accounts.valid);

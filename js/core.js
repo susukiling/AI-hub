@@ -27,7 +27,7 @@ const defaults = {
   voice:true, wake:false, profile:'',
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
-  share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true },
+  share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true },
   models:{ gemini:'gemini-3.6-flash', llama:'llama-3.3-70b-versatile', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
