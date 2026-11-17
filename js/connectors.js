@@ -40,7 +40,31 @@ function statusOf(s){
   if(s.id === 'calendar' || s.id === 'photos') return O.google.valid ? ['連携中', 'on'] : [O.user ? '未連携' : '未ログイン', 'off'];
   return ['', ''];
 }
+function renderAccounts(){
+  const box = $('#acctList'); box.textContent = '';
+  if(!O.user){ box.append(el('p', 'hint', '先にメインのGoogleアカウントでログインしてください。')); return; }
+  const row = (name, email, note, onRemove) => {
+    const r = el('div', 'acct-row'); const i = el('div'); i.append(el('b', '', name), el('small', '', email + (note ? ' ・ ' + note : '')));
+    r.append(i);
+    if(onRemove){ const b = el('button', 'btn sm', '外す'); b.type = 'button'; b.onclick = onRemove; r.append(b); }
+    box.append(r);
+  };
+  row(O.user.displayName || 'メイン', O.user.email || '', 'メイン' + (O.google.valid ? '・連携中' : '・未連携'));
+  O.accounts.list.forEach(a => row(a.name, a.email, O.accounts.valid(a) ? '連携中' : '期限切れ（もう一度追加で更新）', () => { O.removeAccount(a.email); O.state.events = null; O.ui.loadEvents(); renderAccounts(); O.ui.updateAccount(); }));
+  const add = el('button', 'btn sm primary', '別のGoogleアカウントを追加'); add.type = 'button';
+  add.onclick = async () => {
+    add.disabled = true;
+    try{
+      const r = await O.addAccount();
+      O.toast(r.same ? 'メインと同じアカウントです。連携を更新しました' : `${r.email} を追加しました`);
+      O.ui.loadEvents(); O.ui.updateAccount();
+    }catch(e){ if(e.code !== 'auth/cancelled-popup-request' && e.code !== 'auth/popup-closed-by-user') O.toast('追加できませんでした: ' + (e.code || e.message)); }
+    add.disabled = false; renderAccounts();
+  };
+  box.append(add, el('p', 'hint', '追加したアカウントの予定も、今日の予定に一緒に並びます（最大3つ）。権限はタブを閉じると切れます。ログインや会話履歴は、メインのアカウントのままです。'));
+}
 function render(){
+  renderAccounts();
   const sb = $('#shareBox'); sb.textContent = '';
   SHARE.forEach(([k, t, d]) => {
     const l = el('label', 'switch');

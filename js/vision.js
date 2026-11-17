@@ -99,6 +99,13 @@ function showEvents(list, o){
     r.append(cb, t, s, e); if(ev.note) r.append(el('small', '', ev.note));
     o.append(r); rows.push({ cb, t, s, e });
   });
+  const ex = O.accounts.list.filter(O.accounts.valid);
+  let target = null;
+  if(ex.length){
+    target = el('select', 'select'); target.setAttribute('aria-label', '追加先のアカウント');
+    [O.user && O.user.email].concat(ex.map(x => x.email)).forEach(m => { if(m){ const op = el('option', '', m); op.value = m; target.append(op); } });
+    o.append(target);
+  }
   const add = el('button', 'btn primary', '選んだ予定をカレンダーに追加'); add.type = 'button';
   add.onclick = async () => {
     const sel = rows.filter(r => r.cb.checked);
@@ -106,7 +113,7 @@ function showEvents(list, o){
     if(!O.google.valid){ toast('カレンダーとの連携が必要です'); O.user ? O.ui.doConnect() : O.ui.doLogin(); return; }
     add.disabled = true; let n = 0;
     for(const r of sel){
-      try{ await O.createEvent({ title:r.t.value, start:new Date(r.s.value), end:new Date(r.e.value) }); n++; r.cb.checked = false; r.cb.disabled = true; }
+      try{ await O.createEvent({ title:r.t.value, start:new Date(r.s.value), end:new Date(r.e.value) }, target && target.value); n++; r.cb.checked = false; r.cb.disabled = true; }
       catch(err){ toast('追加できませんでした: ' + err.message); break; }
     }
     add.disabled = false;

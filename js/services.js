@@ -158,18 +158,49 @@ O.connectGoogle = async function(){
   saveToken(cred.accessToken);
   return res.user;
 };
+/* ---------- 追加のGoogleアカウント（それぞれ別のFirebaseアプリ。トークンはタブを閉じると消える） ---------- */
+O.accounts = { list:[] };
+(function(){
+  try{ O.accounts.list = (JSON.parse(sessionStorage.getItem('orbit.extra')) || []).filter(a => a && a.email); }catch(e){}
+})();
+const saveAccts = () => { try{ sessionStorage.setItem('orbit.extra', JSON.stringify(O.accounts.list)); }catch(e){} };
+O.accounts.valid = a => !!a.token && Date.now() < a.exp;
+O.addAccount = async function(){
+  if(!O.fbReady || !O.user) throw new Error('先にメインのアカウントでログインしてください');
+  const conf = window.FIREBASE_CONFIG;
+  let app; try{ app = firebase.app('extra'); }catch(e){ app = firebase.initializeApp(conf, 'extra'); }
+  const auth = app.auth();
+  const p = new firebase.auth.GoogleAuthProvider();
+  O.SCOPES.forEach(sc => p.addScope(sc));
+  p.setCustomParameters({ prompt:'select_account' });
+  const res = await auth.signInWithPopup(p);
+  const u = res.user, tok = res.credential && res.credential.accessToken;
+  await auth.signOut().catch(() => {});                       // 追加アカウントは、Firebaseにはログインさせたままにしない
+  if(!tok) throw new Error('アクセス権のトークンを受け取れませんでした');
+  if(u.email === O.user.email){ saveToken(tok); return { same:true, email:u.email }; }
+  const rec = { email:u.email, name:u.displayName || u.email, photo:u.photoURL || '', token:tok, exp:Date.now() + 55 * 60 * 1000 };
+  const i = O.accounts.list.findIndex(a => a.email === rec.email);
+  if(i >= 0) O.accounts.list[i] = rec; else O.accounts.list.push(rec);
+  if(O.accounts.list.length > 3) O.accounts.list.shift();
+  saveAccts();
+  return rec;
+};
+O.removeAccount = function(email){ O.accounts.list = O.accounts.list.filter(a => a.email !== email); saveAccts(); };
+
 O.signOut = async function(){
   if(O.auth) await O.auth.signOut();
+  O.accounts.list = []; saveAccts();
   dropToken(); O.state.events = null; O.state.photos = [];
 };
 
 /* ---------- Google Calendar ---------- */
-async function gfetch(url, opts){
-  if(!O.google.valid) throw new Error('AUTH');
+async function gfetch(url, opts, tok){
+  tok = tok || (O.google.valid ? O.google.token : null);
+  if(!tok) throw new Error('AUTH');
   const o = Object.assign({}, opts);
-  o.headers = Object.assign({ Authorization:'Bearer ' + O.google.token }, o.headers || {});
+  o.headers = Object.assign({ Authorization:'Bearer ' + tok }, o.headers || {});
   const r = await fetch(url, o);
-  if(r.status === 401){ dropToken(); throw new Error('AUTH'); }
+  if(r.status === 401){ if(tok === O.google.token) dropToken(); throw new Error('AUTH'); }
   if(r.status === 403){
     let m = ''; try{ m = (await r.json()).error.message; }catch(e){}
     throw new Error('Googleが許可しませんでした: ' + (m || 'HTTP 403'));
@@ -178,24 +209,33 @@ async function gfetch(url, opts){
   return r;
 }
 O.fetchEvents = async function(){
+  const main = await fetchEventsWith(null, '');
+  const extra = O.accounts.list.filter(O.accounts.valid);
+  if(!extra.length) return main;
+  const rest = await Promise.all(extra.map(a => fetchEventsWith(a.token, a.email).catch(() => [])));
+  main.forEach(e => { e.acct = O.user.email; });
+  return main.concat(...rest).sort((a, b) => String(a.start).localeCompare(String(b.start)));
+};
+async function fetchEventsWith(tok, acct){
   const start = new Date(); start.setHours(0, 0, 0, 0);
   const end = new Date(start); end.setDate(end.getDate() + 1);
   const q = new URLSearchParams({ timeMin:start.toISOString(), timeMax:end.toISOString(), singleEvents:'true', orderBy:'startTime', maxResults:'25' });
-  const r = await gfetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + q);
+  const r = await gfetch('https://www.googleapis.com/calendar/v3/calendars/primary/events?' + q, {}, tok);
   const j = await r.json();
   return (j.items || []).filter(e => e.status !== 'cancelled').map(e => ({
     id:e.id, title:e.summary || '(無題)', allDay:!!(e.start && e.start.date),
     start:(e.start && (e.start.dateTime || e.start.date)) || '', end:(e.end && (e.end.dateTime || e.end.date)) || '',
-    location:e.location || ''
+    location:e.location || '', acct
   }));
-};
-O.createEvent = async function(ev){
+}
+O.createEvent = async function(ev, email){
+  const ac = email && O.accounts.list.find(a => a.email === email && O.accounts.valid(a));
   const s = new Date(ev.start), e = new Date(ev.end);
   if(isNaN(s) || isNaN(e) || e <= s) throw new Error('予定の日時が正しくありません');
   const r = await gfetch('https://www.googleapis.com/calendar/v3/calendars/primary/events', {
     method:'POST', headers:{ 'Content-Type':'application/json' },
     body:JSON.stringify({ summary:String(ev.title).slice(0, 200), start:{ dateTime:s.toISOString() }, end:{ dateTime:e.toISOString() } })
-  });
+  }, ac ? ac.token : null);
   return r.json();
 };
 

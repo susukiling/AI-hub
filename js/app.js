@@ -244,9 +244,11 @@ function renderEvents(mode, msg){
   const ev = O.state.events || [];
   meta.textContent = ev.length + ' 件';
   if(!ev.length){ box.append(el('p', 'empty', '今日の予定はありません。')); return; }
+  const multi = new Set(ev.map(e => e.acct).filter(Boolean)).size > 1;
   ev.forEach(e => {
     const r = el('div', 'ev');
     r.append(el('time', '', e.allDay ? '終日' : `${O.fmtTime(e.start)}-${O.fmtTime(e.end)}`), el('span', '', e.title));
+    if(multi && e.acct) r.append(el('small', 'acct-tag', e.acct.split('@')[0]));
     box.append(r);
   });
 }
@@ -327,6 +329,9 @@ function updateAccount(){
     const out = el('button', 'btn', 'ログアウト'); out.type = 'button';
     out.onclick = async () => { await O.signOut(); toggleDrawer(false); toast('ログアウトしました'); };
     row.append(re, out); box.append(row);
+    O.accounts.list.forEach(x => box.append(el('small', 'hint', '追加: ' + x.email + (O.accounts.valid(x) ? '' : '（期限切れ）'))));
+    const add = el('button', 'btn', '別のアカウントを追加'); add.type = 'button'; add.style.marginTop = '8px'; add.onclick = () => { toggleDrawer(false); O.connectors.open(); };
+    box.append(add);
   }else{
     const b = el('button', 'btn primary', 'Googleでログイン'); b.type = 'button'; b.style.width = '100%';
     b.onclick = () => { toggleDrawer(false); doLogin(); };
@@ -713,7 +718,7 @@ $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); open
 $('#drawerConnectors').addEventListener('click', () => { toggleDrawer(false); O.connectors.open(); });
 $('#newChatBtn').addEventListener('click', newChat);
 $('#histBtn').addEventListener('click', () => setView('history'));
-O.ui = { addMsg, speak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
+O.ui = { updateAccount, addMsg, speak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
 
 /* =========================================================
    設定
