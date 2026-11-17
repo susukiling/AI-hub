@@ -26,11 +26,14 @@ const defaults = {
   groqKey:'', geminiKey:'', rememberKeys:true, proxyUrl:'', recaptchaKey:'',
   voice:true, wake:false, profile:'',
   cityKey:'tokyo', geo:null,
+  // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
+  share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true },
   models:{ gemini:'gemini-3.6-flash', llama:'llama-3.3-70b-versatile', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
 O.cfg.models = Object.assign({}, defaults.models, O.cfg.models || {});
+O.cfg.share = Object.assign({}, defaults.share, O.cfg.share || {});
 // 以前に保存された古いGeminiのモデル名（2.0/2.5系は終了）は、新しい既定に自動で置き換える
 if(/^gemini-2\.[05]/.test(O.cfg.models.gemini || '')) O.cfg.models.gemini = defaults.models.gemini;
 delete O.cfg.fbConfig;   // firebaseConfigは js/firebase-config.js だけに書く（以前の設定画面の値は使わない）
@@ -107,6 +110,11 @@ async function errText(r){
   let m = ''; try{ const j = await r.json(); m = (j.error && j.error.message) || JSON.stringify(j); }catch(e){ m = await r.text().catch(() => ''); }
   return `HTTP ${r.status} ${String(m).slice(0, 220)}`;
 }
+/* メッセージ → Geminiのcontents。m.media があれば、画像・PDFを inlineData として付ける */
+O.toGeminiContents = messages => messages.map(m => ({
+  role:m.role === 'assistant' ? 'model' : 'user',
+  parts:[{ text:m.content || '(添付を参照)' }, ...(m.media || []).map(x => ({ inlineData:{ mimeType:x.mime, data:x.data } }))]
+}));
 async function proxyFetch(path, payload){
   const tok = await O.user.getIdToken();
   const h = { 'Content-Type':'application/json', 'Authorization':'Bearer ' + tok };
@@ -117,7 +125,7 @@ async function proxyFetch(path, payload){
 }
 async function callGroq(model, o){
   const msgs = []; if(o.system) msgs.push({ role:'system', content:o.system });
-  msgs.push(...o.messages);
+  msgs.push(...o.messages.map(m => ({ role:m.role, content:m.content })));   // 画像・PDFはGroqでは送らない
   const payload = { model, messages:msgs, temperature:o.temperature ?? 0.7 };
   const r = O.ownKey('groq')
     ? await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -136,8 +144,8 @@ async function callGemini(model, o){
   // 呼び出しの優先順: 自分のキー → Firebase AI Logic（鍵なし） → 共有プロキシ
   if(!O.ownKey('gemini') && O.aiReady) return O.aiGenerate(model, o);
   const body = {
-    contents:o.messages.map(m => ({ role:m.role === 'assistant' ? 'model' : 'user', parts:[{ text:m.content }] })),
-    generationConfig:{ temperature:o.temperature ?? 0.7 }
+    contents:O.toGeminiContents(o.messages),
+    generationConfig:Object.assign({ temperature:o.temperature ?? 0.7 }, o.maxTokens ? { maxOutputTokens:o.maxTokens } : {})
   };
   if(o.system) body.systemInstruction = { parts:[{ text:o.system }] };
   if(o.search) body.tools = [{ google_search:{} }];            // 検索連携とJSONモードは併用しない
@@ -180,6 +188,7 @@ async function callGeminiWithFallback(model, o){
 O.callAI = async function(want, o){
   let id = O.resolve(want);
   if(o.search) id = O.hasKey('gemini') ? 'gemini' : null;      // Web検索つきの回答はGeminiだけ
+  if((o.messages || []).some(m => m.media && m.media.length)) id = O.hasKey('gemini') ? 'gemini' : null;   // 画像・PDFの読み取りもGeminiだけ
   if(!id){
     await O.sleep(700 + Math.random() * 700);
     return { agent:want, text:O.demoText(want, o), demo:true, sources:[], suggest:'' };
@@ -195,15 +204,18 @@ O.demoText = function(want, o){
   switch(o.tag){
     case 'jarvis':
       return O.demoJarvis ? O.demoJarvis(o.user || '') : JSON.stringify({ reply:'いまはデモモードです。', actions:[] });
-    case 'plan':
+    case 'answer':
+      return `【デモ回答 / ${O.AGENTS[want].name}】\n課題「${u}」について:\n・まず目的と期限を決める\n・小さく試して、結果を見て直す\n・判断に使う数字を記録しておく`;
+    case 'critique':
       return JSON.stringify({
-        plan:'課題を「整理・調査」と「具体案・リスク」の2方向に分けて、並行で進めます。',
-        tasks:[`「${u}」の前提・選択肢・比較軸を整理する`, `「${u}」の具体的な進め方とリスクを洗い出す`]
+        issues:[{ target:o.peer || 'Gemini', point:'デモ表示です。実際のモデルなら、ここに具体的な誤りの指摘が入ります。' }],
+        agree:'デモ表示です。',
+        revised:`【デモ修正版 / ${O.AGENTS[want].name}】\n課題「${u}」について、他のAIの答えを見て直しました。\n・目的と期限を最初に決める\n・小さく試して結果を見て直す\n・数字を記録し、次の判断に使う`
       });
-    case 'work':
-      return `【デモ出力 / ${O.AGENTS[want].name}】\n・観点: ${(o.user || '').slice(0, 60)}\n・ポイント1: 目的と制約を先に決める\n・ポイント2: 小さく試して結果を見て直す\n・ポイント3: 判断の材料を数字で残す`;
     case 'synth':
-      return '【デモ統合】2つの観点をまとめると、先に目的と制約を決め、小さく試し、結果を数字で残しながら進めるのが良さそうです。\n\n次の一歩: 設定でAPIキーを入れて、同じ課題を実際のモデルで走らせてみてください。';
+      return '【デモ統合】3つの回答に大きな食い違いはありません。目的と期限を決め、小さく試し、結果を数字で残しながら進めるのが良さそうです。\n\n次の一歩: 設定でAPIキーを入れて、同じ課題を実際のモデルで走らせてみてください。';
+    case 'vision':
+      return JSON.stringify(O.demoVision ? O.demoVision(o.mode) : {});
     case 'feed':
       return JSON.stringify({
         brief:'いまはデモ表示です。GeminiかGroqのキーを設定すると、天気・予定・タスクを見たうえで提案します。',

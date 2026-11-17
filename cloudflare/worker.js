@@ -47,7 +47,8 @@ export default {
       const user = await authenticate(req, env);
       await rateLimit(user.uid, env);
       const raw = await req.text();
-      if(raw.length > 200000) throw new HttpError(413, '送信内容が大きすぎます');
+      // 画像・PDFを付けたGeminiの呼び出しは大きくなるので、Geminiだけ上限を広げる
+      if(raw.length > (url.pathname === '/v1/gemini' ? 8000000 : 200000)) throw new HttpError(413, '送信内容が大きすぎます');
       let body; try{ body = JSON.parse(raw); }catch(e){ throw new HttpError(400, 'JSONを読み取れません'); }
       if(url.pathname === '/v1/groq') return await groq(body, env, cors);
       if(url.pathname === '/v1/gemini') return await gemini(body, env, cors);

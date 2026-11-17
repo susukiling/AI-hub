@@ -78,7 +78,7 @@ O.initAI = async function(){
 };
 O.aiGenerate = async function(model, o){
   const { M, inst } = O._ai;
-  const gc = { temperature:o.temperature ?? 0.7 };
+  const gc = { temperature:o.temperature ?? 0.7 }; if(o.maxTokens) gc.maxOutputTokens = o.maxTokens;
   const params = { model, generationConfig:gc };
   if(o.system) params.systemInstruction = o.system;
   if(o.search) params.tools = [{ googleSearch:{} }];            // 検索連携とJSONモードは併用しない
@@ -86,7 +86,7 @@ O.aiGenerate = async function(model, o){
   const m = M.getGenerativeModel(inst, params);
   let res;
   try{
-    res = await m.generateContent({ contents:o.messages.map(x => ({ role:x.role === 'assistant' ? 'model' : 'user', parts:[{ text:x.content }] })) });
+    res = await m.generateContent({ contents:O.toGeminiContents(o.messages) });
   }catch(e){
     throw new Error('Gemini(AI Logic): ' + String(e.message || e.code || e).slice(0, 240));
   }

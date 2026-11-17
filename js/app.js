@@ -25,19 +25,21 @@ function cta(text, label, fn){
 function contextText(){
   const d = new Date();
   const L = [`現在: ${d.toLocaleString('ja-JP', { dateStyle:'full', timeStyle:'short' })}`];
+  const sh = O.cfg.share;
   const w = O.state.weather;
-  if(w) L.push(`天気(${O.city().name}): いま${w.now.label} ${Math.round(w.now.temp)}度 / 今日 最高${Math.round(w.days[0].max)}度 最低${Math.round(w.days[0].min)}度 降水確率${w.days[0].pop}%`);
+  if(sh.weather && w) L.push(`天気(${O.city().name}): いま${w.now.label} ${Math.round(w.now.temp)}度 / 今日 最高${Math.round(w.days[0].max)}度 最低${Math.round(w.days[0].min)}度 降水確率${w.days[0].pop}%`);
   const ev = O.state.events;
-  if(ev && ev.length) L.push('今日の予定: ' + ev.map(e => `${e.allDay ? '終日' : O.fmtTime(e.start) + '-' + O.fmtTime(e.end)} ${e.title}`).join(' / '));
+  if(!sh.events) L.push('今日の予定: (共有オフ)');
+  else if(ev && ev.length) L.push('今日の予定: ' + ev.map(e => `${e.allDay ? '終日' : O.fmtTime(e.start) + '-' + O.fmtTime(e.end)} ${e.title}`).join(' / '));
   else if(ev) L.push('今日の予定: なし');
   else L.push('今日の予定: (カレンダー未接続)');
   const open = tasks.filter(t => !t.done).map(t => t.text);
-  L.push('未完了のタスク: ' + (open.length ? open.slice(0, 8).join(' / ') : 'なし'));
+  if(sh.tasks) L.push('未完了のタスク: ' + (open.length ? open.slice(0, 8).join(' / ') : 'なし'));
   const u = O.usage[O.todayKey()];
-  if(u) L.push(`スクリーンタイム: このアプリ${Math.round(u.app / 60)}分` + (u.device != null ? ` / 端末合計${u.device}分` : ''));
+  if(sh.screen && u) L.push(`スクリーンタイム: このアプリ${Math.round(u.app / 60)}分` + (u.device != null ? ` / 端末合計${u.device}分` : ''));
   const n = O.state.news;
-  if(n && n.items.length && !n.demo) L.push('主要ニュース: ' + n.items.slice(0, 3).map(i => i.title).join(' / '));
-  if(O.cfg.profile.trim()) L.push('ユーザーについて: ' + O.cfg.profile.trim());
+  if(sh.news && n && n.items.length && !n.demo) L.push('主要ニュース: ' + n.items.slice(0, 3).map(i => i.title).join(' / '));
+  if(sh.profile && O.cfg.profile.trim()) L.push('ユーザーについて: ' + O.cfg.profile.trim());
   return L.join('\n');
 }
 
@@ -188,7 +190,7 @@ function tick(){
   });
   if(finished.length){
     timers = timers.filter(t => !finished.includes(t)); renderTimers();
-    finished.forEach(t => { log('sys', 'タイマー終了: ' + t.label); toast(`${t.label} の時間です`); addMsg('ai', `${t.label}が終わりました。`, {}); });
+    finished.forEach(t => { log('sys', 'タイマー終了: ' + t.label); toast(`${t.label} の時間です`); addMsg('ai', `${t.label}が終わりました。`, { nosave:true }); });
     beep(); speak(`${finished[0].label}の時間です`);
   }
 }
@@ -338,7 +340,7 @@ O.onAuth = u => {
   updateAccount(); refreshPills();
   if(u){
     O.state.authError = '';
-    log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); loadEvents(); renderPhotos();
+    log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); O.hist.pull(); loadEvents(); renderPhotos();
     if(!aiWas && O.anyKey()){ log('sys', '共有プロキシ経由でAIが使えるようになりました'); loadNews(true); loadFeed(); }
   }else{ O.state.events = null; renderEvents(); renderPhotos(); }
   aiWas = O.anyKey();
@@ -585,25 +587,55 @@ function addMsg(kind, text, opt = {}){
     const nm = opt.agent === 'team' ? 'TEAM' : (AGENTS[opt.agent] ? AGENTS[opt.agent].name.toUpperCase() : 'ORBIT');
     d.append(el('span', 'who', nm + (opt.demo ? ' · DEMO' : '')));
   }
+  if(opt.thumbs && opt.thumbs.length){
+    const row = el('div', 'thumbs');
+    opt.thumbs.forEach(u => { const im = el('img'); im.src = u; im.alt = '添付画像'; row.append(im); });
+    d.append(row);
+  }
   d.append(document.createTextNode(text));
-  if(opt.chips && opt.chips.length){
-    const ch = el('div', 'chips'); opt.chips.forEach(x => ch.append(el('span', 'chip', x))); d.append(ch);
+  const chips = (opt.chips || []).concat(opt.att || []);
+  if(chips.length){
+    const ch = el('div', 'chips'); chips.forEach(x => ch.append(el('span', 'chip', x))); d.append(ch);
   }
   c.append(d); c.scrollTop = c.scrollHeight;
+  if(!opt.nosave && (kind === 'ai' || kind === 'err')) O.hist.add({ role:kind, text, agent:opt.agent, demo:opt.demo });
+}
+function newChat(){
+  O.hist.newChat(); chatHist = []; $('#chat').textContent = '';
+  addMsg('ai', '新しい会話を始めます。ご用件をどうぞ。', { nosave:true });
+}
+function resumeChat(c){
+  O.hist.current = c.id; chatHist = []; $('#chat').textContent = '';
+  c.messages.forEach(m => {
+    if(m.role === 'user'){ addMsg('user', m.text, { att:m.att, nosave:true }); chatHist.push({ role:'user', content:m.text }); }
+    else{ addMsg(m.role === 'err' ? 'err' : 'ai', m.text, { agent:m.agent, demo:m.demo, nosave:true }); if(m.role === 'ai') chatHist.push({ role:'assistant', content:m.text }); }
+  });
+  setView('jarvis'); toast('会話を再開しました');
 }
 async function sendChat(text){
-  text = (text || '').trim(); if(!text) return;
+  const att = O.attach.take();
+  text = (text || '').trim();
+  if(!text && !att.media.length && !att.texts.length) return;
+  if(!text) text = att.media.length ? 'この添付の内容を教えて' : 'この添付の内容を見て';
   if('speechSynthesis' in window) speechSynthesis.cancel();
-  addMsg('user', text); chatHist.push({ role:'user', content:text }); setOrb('thinking');
+  let content = text;
+  att.texts.forEach(t => { content += `\n\n[添付ファイル: ${t.name}]\n${t.text}`; });
+  addMsg('user', text, { att:att.names, thumbs:att.thumbs, nosave:true });
+  O.hist.ensure('jarvis', text); O.hist.add({ role:'user', text, att:att.names });
+  const um = { role:'user', content }; if(att.media.length) um.media = att.media;
+  chatHist.push(um); setOrb('thinking');
+  const sent = chatHist.slice(-12).map(m => m === um ? m : { role:m.role, content:m.content });
   try{
-    const res = await O.callAI($('#brain').value, { system:jarvisPrompt(), messages:chatHist.slice(-12), json:true, tag:'jarvis', user:text, temperature:.5 });
+    const res = await O.callAI(att.media.length ? 'gemini' : $('#brain').value, { system:jarvisPrompt(), messages:sent, json:true, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined });
     const out = parseJarvis(res.text);
+    delete um.media;
     chatHist.push({ role:'assistant', content:res.text });
     const acts = out.actions.slice(0, 4).map(cleanAction).filter(Boolean);
     log(res.agent, 'Jarvis: ' + out.reply.slice(0, 70));
     addMsg('ai', out.reply, { agent:res.agent, demo:res.demo, chips:acts.map(a => ({ add_task:'タスク追加', set_timer:'タイマー', delegate:'チームへ依頼', add_event:'予定の確認カード' })[a.type]) });
     runActions(acts); speak(out.reply);
   }catch(e){
+    delete um.media;
     addMsg('err', e.message); log('sys', 'エラー: ' + e.message); setOrb('idle');
   }
 }
@@ -646,85 +678,13 @@ $('#composer').addEventListener('submit', e => { e.preventDefault(); const i = $
 $('#briefForm').addEventListener('submit', e => { e.preventDefault(); const i = $('#briefInput'); const v = i.value; i.value = ''; if(v.trim()) handleVoice(v); });
 $$('#suggest button').forEach(b => b.addEventListener('click', () => sendChat(b.textContent)));
 
-/* =========================================================
-   AI Team（計画 → 並列実行 → 統合）
-   ========================================================= */
-let running = false;
-const STAGE_DEFAULT = { plan:'gemini', w1:'llama', w2:'gpt', synth:'gemini' };
-const STAGE_IDLE = { plan:'課題を2つの観点に分けます', w1:'待機中', w2:'待機中', synth:'2つの結果を1つの答えにまとめます' };
-const stageEl = id => document.querySelector(`.stage[data-id="${id}"]`);
-function setStage(id, state, o = {}){
-  const s = stageEl(id); s.dataset.state = state;
-  const out = s.querySelector('.out'), ag = s.querySelector('.agent');
-  if(o.agent){ ag.dataset.a = o.agent; ag.textContent = AGENTS[o.agent].name + (o.demo ? ' · デモ' : ''); }
-  if(o.text !== undefined){ out.textContent = o.text; out.classList.remove('idle'); }
-  if(state === 'running' && o.text === undefined){ out.textContent = '作業中…'; out.classList.add('idle'); }
-}
-function resetStages(){
-  Object.keys(STAGE_DEFAULT).forEach(id => {
-    const s = stageEl(id); s.dataset.state = 'idle';
-    const ag = s.querySelector('.agent'); ag.dataset.a = STAGE_DEFAULT[id]; ag.textContent = AGENTS[STAGE_DEFAULT[id]].name;
-    const out = s.querySelector('.out'); out.textContent = STAGE_IDLE[id]; out.classList.add('idle');
-  });
-}
-async function work(agent, stage, sub, full){
-  setStage(stage, 'running', { agent:O.resolve(agent) || agent, demo:!O.resolve(agent) });
-  try{
-    const r = await O.callAI(agent, {
-      system:'あなたはチームの一員のアシスタントです。割り当てられた観点だけに集中し、日本語で簡潔に（300字程度）、具体的に答えてください。',
-      messages:[{ role:'user', content:`全体の課題: ${full}\n\nあなたの担当: ${sub}` }], tag:'work', user:sub, temperature:.6
-    });
-    setStage(stage, 'done', { agent:r.agent, demo:r.demo, text:r.text.trim() });
-    log(r.agent, `${stage === 'w1' ? '実行A' : '実行B'} 完了`);
-    return r.text.trim();
-  }catch(e){
-    setStage(stage, 'error', { text:'失敗: ' + e.message }); log('sys', `${stage} 失敗: ${e.message}`);
-    return '(この担当は失敗したため結果なし)';
-  }
-}
-async function runTeam(task, fromChat){
-  task = (task || '').trim();
-  if(!task || running) return;
-  running = true; $('#teamRun').disabled = true; resetStages();
-  log('team', '開始: ' + task.slice(0, 60));
-  try{
-    setStage('plan', 'running', { agent:O.resolve('gemini') || 'gemini', demo:!O.resolve('gemini') });
-    const p = await O.callAI('gemini', {
-      system:`あなたは優秀なプロジェクトマネージャーです。課題を、独立して並行に進められる2つの担当に分けてください。JSONだけを返します: {"plan":"方針を1文","tasks":["担当Aの指示","担当Bの指示"]}${O.cfg.profile.trim() ? '\n依頼者について: ' + O.cfg.profile.trim() : ''}`,
-      messages:[{ role:'user', content:task }], json:true, tag:'plan', user:task, temperature:.3
-    });
-    const pj = O.safeJSON(p.text) || {};
-    const tasksArr = (Array.isArray(pj.tasks) ? pj.tasks : []).map(String).slice(0, 2);
-    while(tasksArr.length < 2) tasksArr.push(task);
-    setStage('plan', 'done', { agent:p.agent, demo:p.demo, text:`${pj.plan || '課題を2つに分けて進めます。'}\nA: ${tasksArr[0]}\nB: ${tasksArr[1]}` });
-    log(p.agent, '計画 完了');
-    const [a, b] = await Promise.all([work('llama', 'w1', tasksArr[0], task), work('gpt', 'w2', tasksArr[1], task)]);
-    setStage('synth', 'running', { agent:O.resolve('gemini') || 'gemini', demo:!O.resolve('gemini') });
-    const s = await O.callAI('gemini', {
-      system:'あなたは編集長です。2人の担当の結果を矛盾なく1つにまとめ、日本語で読みやすい最終回答を作ってください。最後に「次の一歩」を1〜2個添えます。',
-      messages:[{ role:'user', content:`課題: ${task}\n\n[担当A]\n${a}\n\n[担当B]\n${b}` }], tag:'synth', user:task, temperature:.4
-    });
-    const final = s.text.trim();
-    setStage('synth', 'done', { agent:s.agent, demo:s.demo, text:final });
-    log(s.agent, '統合 完了'); log('team', '完了');
-    if(fromChat){ addMsg('ai', final, { agent:'team', demo:s.demo }); speak('チームの作業が終わりました。結果を表示します。'); }
-    else toast('AIチームの作業が終わりました');
-  }catch(e){
-    const bad = ['plan', 'w1', 'w2', 'synth'].find(id => stageEl(id).dataset.state === 'running');
-    if(bad) setStage(bad, 'error', { text:'失敗: ' + e.message });
-    log('sys', 'チーム失敗: ' + e.message); toast('チームの実行に失敗しました: ' + e.message);
-    if(fromChat) addMsg('err', 'チームの実行に失敗しました: ' + e.message);
-  }finally{
-    running = false; $('#teamRun').disabled = false;
-  }
-}
-$('#teamForm').addEventListener('submit', e => { e.preventDefault(); runTeam($('#teamTask').value, false); });
-$('#teamTask').value = '一人暮らしを始める人向けに、1か月の予算プランと最初に買う物のリストを作って';
+/* AI Teamの本体は js/team.js */
+const runTeam = (t, fromChat) => O.runTeam(t, !!fromChat);
 
 /* =========================================================
    メニュー（ハンバーガー）と画面切り替え
    ========================================================= */
-const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', log:'.log' };
+const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', log:'.log' };
 const HOME = ['brief', 'weather', 'feed', 'events', 'tasks', 'news', 'screen', 'photos', 'timers'];
 function setView(v){
   const single = v !== 'home' && TILE[v] ? v : null;
@@ -732,6 +692,7 @@ function setView(v){
   Object.keys(TILE).forEach(k => { $(TILE[k]).hidden = single ? k !== single : !HOME.includes(k); });
   $$('.nav-item').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
   store.set('view', single || 'home'); window.scrollTo({ top:0 });
+  if(single === 'history') O.hist.render();
 }
 const drawer = $('#drawer'), scrim = $('#scrim'), burger = $('#burger');
 function toggleDrawer(open){
@@ -749,6 +710,10 @@ $('#brain').addEventListener('change', () => { updateJarvisMeta(); toast('Jarvis
 $('#userChip').addEventListener('click', () => toggleDrawer(true));
 $('#loginBtn').addEventListener('click', doLogin);
 $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); openSettings(); });
+$('#drawerConnectors').addEventListener('click', () => { toggleDrawer(false); O.connectors.open(); });
+$('#newChatBtn').addEventListener('click', newChat);
+$('#histBtn').addEventListener('click', () => setView('history'));
+O.ui = { addMsg, speak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
 
 /* =========================================================
    設定
@@ -830,7 +795,7 @@ function updateHello(){
     refreshPills(); pickBrain(); aiWas = O.anyKey();
     if(O.aiReady) log('gemini', 'Firebase AI Logic に接続しました（鍵なしでGeminiが使えます）');
     else if(O.aiProblem) log('sys', O.aiProblem);
-    addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null });
+    addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null, nosave:true });
     return Promise.allSettled([loadNews(false), O.user ? loadEvents() : Promise.resolve()]);
   }).then(() => {
     const at = store.get('feedAt', 0);

@@ -121,3 +121,10 @@ firestore.rules      Firestoreのルール
 
 - 前提（プロフィール）を毎回渡す、質問してから動く、段階的に進める（[しくみタス](https://note.com/shikumitas/n/n26836c4b74b8)）
 - 小さく動かしてから広げる、処理を分けて詰まりを切り分ける、取り消せない操作は確認を挟む、キーを公開リポジトリに入れない（[jarvis-build-guide](https://github.com/voixa/jarvis-build-guide)）
+
+## Phase A の機能
+- AI Team: Llama・GPT-OSS・Geminiが独立に答え、互いの誤りを指摘し合って修正（回数は0〜2回）。必要なときだけ「1つにまとめる」。
+- 会話履歴: このブラウザに保存し、ログイン中はFirestore（`users/{uid}/convs`）にも同期。検索・再開・削除ができる。
+- 「＋」メニュー: 画像・PDF・テキストを添付（画像は長辺1600pxに縮小）。添付はGeminiが読む。Workerを使う場合、Geminiの本文上限は8MB。
+- 画像読み取り: 画像 → 予定（確認後にカレンダーへ）/ タスク / 問題（単体のHTML）/ 文字。
+- コネクタ: AIに見せる情報の切り替えと、各サービスの「できること／しないこと」の説明。Drive・Docs系・GAS・Gmail・Chat・Classroomは次の段階で対応。

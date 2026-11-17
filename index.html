@@ -10,6 +10,7 @@
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/home.css">
+<link rel="stylesheet" href="css/features.css">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -114,7 +115,7 @@
 
     <!-- Jarvis (full view) -->
     <article class="glass jarvis" aria-label="Jarvis">
-      <div class="tile-h"><h2>Jarvis</h2><span class="meta" id="jarvisMeta"></span></div>
+      <div class="tile-h"><h2>Jarvis</h2><div class="h-right"><span class="meta" id="jarvisMeta"></span><button class="btn sm" id="newChatBtn" type="button">新しい会話</button><button class="btn sm" id="histBtn" type="button">履歴</button></div></div>
       <div class="chat" id="chat" aria-live="polite"></div>
       <div class="suggest" id="suggest">
         <button type="button">今日の予定を教えて</button>
@@ -122,7 +123,19 @@
         <button type="button">牛乳を買うをタスクに入れて</button>
         <button type="button">カフェの新メニューを3案考えて</button>
       </div>
+      <div class="attach-bar" id="attachBar" hidden></div>
+      <input type="file" id="imgInput" accept="image/*" multiple hidden>
+      <input type="file" id="fileInput" accept=".pdf,.txt,.md,.csv,.tsv,.json,.log,.html,.css,.js,.py,text/*,application/pdf" multiple hidden>
       <form class="composer" id="composer" autocomplete="off">
+        <div class="plus-wrap">
+          <button class="btn plus" id="plusBtn" type="button" aria-label="追加メニュー" aria-expanded="false" aria-haspopup="true">＋</button>
+          <div class="plus-menu" id="plusMenu" hidden role="menu">
+            <button type="button" role="menuitem" data-act="image"><b>画像を添付</b><small>写真・スクリーンショット</small></button>
+            <button type="button" role="menuitem" data-act="file"><b>ファイルを添付</b><small>PDF・テキスト</small></button>
+            <button type="button" role="menuitem" data-act="vision"><b>画像読み取りページへ</b><small>予定・タスク・問題に変換</small></button>
+            <button type="button" role="menuitem" data-act="connectors"><b>コネクタ</b><small>AIに見せる情報と権限</small></button>
+          </div>
+        </div>
         <input class="field" id="chatInput" placeholder="話しかける、または入力" aria-label="メッセージ">
         <button class="btn mic" type="button" aria-label="音声入力"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="3" width="6" height="12" rx="3"/><path d="M5 11a7 7 0 0 0 14 0M12 18v3"/></svg></button>
         <button class="btn primary" type="submit">送信</button>
@@ -131,28 +144,60 @@
 
     <!-- AI Team (full view) -->
     <article class="glass team" aria-label="AIチーム">
-      <div class="tile-h"><h2>AI Team</h2><span class="meta">計画 → 並列実行 → 統合</span></div>
+      <div class="tile-h"><h2>AI Team</h2><span class="meta">3つの答え → 指摘し合い → 修正</span></div>
       <form class="team-form" id="teamForm">
         <textarea class="field" id="teamTask" aria-label="チームへの課題"></textarea>
-        <button class="btn primary" id="teamRun" type="submit">チームで実行</button>
+        <div class="team-ctl">
+          <label for="teamRounds">指摘し合う回数</label>
+          <select class="select" id="teamRounds"><option value="0">0（並べるだけ）</option><option value="1" selected>1回</option><option value="2">2回</option></select>
+          <button class="btn primary" id="teamRun" type="submit">チームで実行</button>
+        </div>
       </form>
-      <div class="stages" id="stages">
-        <div class="stage wide" data-id="plan" data-state="idle">
-          <div class="stage-h"><i class="dot"></i><span class="role">計画</span><span class="agent" data-a="gemini">Gemini</span></div>
-          <div class="out idle">課題を2つの観点に分けます</div>
+      <div class="team-phase" id="teamPhase">待機中</div>
+      <div class="team-scroll">
+        <div class="trio" id="trio"></div>
+        <div class="team-foot" id="teamFoot"></div>
+      </div>
+    </article>
+
+    <!-- History (full view) -->
+    <article class="glass history" aria-label="会話履歴">
+      <div class="tile-h"><h2>History</h2><span class="meta" id="histMeta"></span></div>
+      <div class="hist-grid">
+        <div class="hist-side">
+          <input class="field" id="histSearch" type="search" placeholder="会話を検索（タイトル・本文）" aria-label="会話を検索">
+          <div class="hist-list" id="histList"></div>
         </div>
-        <div class="stage" data-id="w1" data-state="idle">
-          <div class="stage-h"><i class="dot"></i><span class="role">実行 A</span><span class="agent" data-a="llama">Llama</span></div>
-          <div class="out idle">待機中</div>
+        <div class="hist-view" id="histView"></div>
+      </div>
+    </article>
+
+    <!-- Vision (full view) -->
+    <article class="glass vision" aria-label="画像読み取り">
+      <div class="tile-h"><h2>Vision</h2><span class="meta">画像 → 予定・タスク・問題</span></div>
+      <div class="vis-scroll">
+        <div class="vis-top">
+          <div class="vis-drop" id="visDrop" tabindex="0" role="button" aria-label="画像を選ぶ">
+            <img id="visPreview" alt="" hidden>
+            <span id="visHint">画像をここへドロップ／タップして選ぶ／貼り付け</span>
+          </div>
+          <input type="file" id="visFile" accept="image/*" hidden>
+          <input type="file" id="visCam" accept="image/*" capture="environment" hidden>
+          <div class="vis-ctl">
+            <div class="vis-modes" id="visModes" role="radiogroup" aria-label="変換の種類">
+              <button type="button" role="radio" aria-checked="true" data-mode="events">予定を作る</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="tasks">タスクを作る</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="quiz">問題を作る（HTML）</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="text">文字を書き起こす</button>
+            </div>
+            <div class="vis-btns">
+              <button class="btn sm" id="visCamBtn" type="button">カメラで撮る</button>
+              <button class="btn primary" id="visRun" type="button">読み取る</button>
+            </div>
+            <p class="hint" id="visNote">画像はGeminiに送られます。プリントや掲示物の写真が向いています。</p>
+          </div>
         </div>
-        <div class="stage" data-id="w2" data-state="idle">
-          <div class="stage-h"><i class="dot"></i><span class="role">実行 B</span><span class="agent" data-a="gpt">GPT-OSS</span></div>
-          <div class="out idle">待機中</div>
-        </div>
-        <div class="stage wide" data-id="synth" data-state="idle">
-          <div class="stage-h"><i class="dot"></i><span class="role">統合</span><span class="agent" data-a="gemini">Gemini</span></div>
-          <div class="out idle">2つの結果を1つの答えにまとめます</div>
-        </div>
+        <div class="vis-out" id="visOut"></div>
       </div>
     </article>
 
@@ -174,6 +219,8 @@
   <button class="nav-item" type="button" data-view="home"><b>ホーム</b><small>今日のまとめを一覧</small></button>
   <button class="nav-item" type="button" data-view="jarvis"><b>Jarvis</b><small>話しかけて操作する</small></button>
   <button class="nav-item" type="button" data-view="team"><b>AI Team</b><small>複数のAIで分担して作業</small></button>
+  <button class="nav-item" type="button" data-view="vision"><b>画像読み取り</b><small>画像 → 予定・タスク・問題</small></button>
+  <button class="nav-item" type="button" data-view="history"><b>会話履歴</b><small>過去の会話を検索・再開</small></button>
   <button class="nav-item" type="button" data-view="feed"><b>提案フィード</b><small>エージェントからの提案</small></button>
   <button class="nav-item" type="button" data-view="events"><b>今日の予定</b><small>Googleカレンダー</small></button>
   <button class="nav-item" type="button" data-view="news"><b>ニュース</b><small>主要ニュース</small></button>
@@ -192,6 +239,7 @@
   </select>
   <p class="hint">返答を考えるモデルを切り替えます。キーのない側を選ぶと、キーのあるモデルが代わりに答えます。</p>
   <h4>その他</h4>
+  <button class="btn" type="button" id="drawerConnectors">コネクタ（AIに見せる情報・権限）</button>
   <button class="btn" type="button" id="drawerSettings">設定（APIキー・プロフィール・Firebase）</button>
 </aside>
 
@@ -238,6 +286,16 @@
     </div>
   </form>
 </dialog>
+<dialog id="connectors">
+  <div class="conn">
+    <div class="conn-h"><h3>コネクタ</h3><button class="icon-btn" type="button" id="closeConnectors" aria-label="閉じる">×</button></div>
+    <p class="note">AIに何を見せるか、どのサービスに何を許すかを、ここで決めます。許可は、いつでもこの画面で止められます。</p>
+    <h5>AIに見せる情報</h5>
+    <div id="shareBox"></div>
+    <h5>サービス</h5>
+    <div id="connList"></div>
+  </div>
+</dialog>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
@@ -247,6 +305,11 @@
 <script src="js/firebase-config.js"></script>
 <script src="js/core.js"></script>
 <script src="js/services.js"></script>
+<script src="js/history.js"></script>
+<script src="js/attach.js"></script>
+<script src="js/team.js"></script>
+<script src="js/vision.js"></script>
+<script src="js/connectors.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>
