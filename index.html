@@ -277,6 +277,15 @@
       <option value="geo">現在地（ブラウザの許可が必要）</option>
     </select>
     <label class="switch"><input type="checkbox" id="voiceOn"> Jarvisの返答を音声で読み上げる</label>
+    <label for="ttsEngine">読み上げの方式</label>
+    <select class="field" id="ttsEngine"><option value="browser">ブラウザの声（登録不要）</option><option value="voicevox">VOICEVOX（PCで起動したエンジン）</option></select>
+    <div id="vvBox">
+      <label for="vvUrl">VOICEVOXエンジンのURL</label>
+      <input class="field" id="vvUrl" type="url" autocomplete="off" placeholder="http://localhost:50021">
+      <label for="vvSpeaker">声</label>
+      <div class="vv-row"><select class="field" id="vvSpeaker"></select><button class="btn sm" type="button" id="vvLoad">声を読み込む</button></div>
+      <p class="note" style="margin:6px 0 0">エンジンはこのPC上で動かすので、同じPCのブラウザからだけ使えます。起動時に <code>--cors_policy_mode all</code> を付けてください（スマホやSafariでは使えないことがあります）。つながらないときは、ブラウザの声で読みます。</p>
+    </div>
     <label for="voiceName">読み上げの声（端末にある声から選べます）</label>
     <select class="field" id="voiceName"></select>
     <div class="grid2">
@@ -324,6 +333,7 @@
 <script src="js/vision.js"></script>
 <script src="js/drive.js"></script>
 <script src="js/connectors.js"></script>
+<script src="js/voicevox.js"></script>
 <script src="js/app.js"></script>
 </body>
 </html>

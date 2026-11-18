@@ -83,12 +83,20 @@ function ttsVoice(){
 }
 function speak(t, force){
   if(!('speechSynthesis' in window) || (!force && !O.cfg.voice)){ setOrb('idle'); return; }
-  speechSynthesis.cancel();
+  speechSynthesis.cancel(); if(O.vv) O.vv.stop();
   const text = String(t).replace(/\s+/g, ' ').trim().slice(0, 1500);
   if(!text){ setOrb('idle'); return; }
   const chunks = []; let cur = '';
   (text.match(/[^。！？!?]+[。！？!?]?/g) || [text]).forEach(p => { if((cur + p).length > 120 && cur){ chunks.push(cur); cur = ''; } cur += p; });
   if(cur) chunks.push(cur);
+  if(O.cfg.ttsEngine === 'voicevox' && O.vv){
+    O.vv.speak(chunks, { onstart:() => setOrb('speaking'), onend:() => setOrb('idle') })
+      .catch(e => { O.log('sys', 'VOICEVOXに接続できないため、ブラウザの声で読みます: ' + e.message); speakBrowser(chunks); });
+    return;
+  }
+  speakBrowser(chunks);
+}
+function speakBrowser(chunks){
   const v = ttsVoice();
   chunks.forEach((c, i) => {
     const u = new SpeechSynthesisUtterance(c); u.lang = 'ja-JP';
@@ -100,7 +108,7 @@ function speak(t, force){
   });
 }
 function toggleSpeak(t){
-  if('speechSynthesis' in window && speechSynthesis.speaking){ speechSynthesis.cancel(); setOrb('idle'); return; }
+  if(('speechSynthesis' in window && speechSynthesis.speaking) || (O.vv && O.vv.busy())){ speechSynthesis.cancel(); if(O.vv) O.vv.stop(); setOrb('idle'); return; }
   speak(t, true);
 }
 
@@ -770,9 +778,21 @@ function openSettings(){
   $('#profile').value = c.profile; $('#cityKey').value = c.cityKey;
   $('#rememberKeys').checked = c.rememberKeys !== false; $('#proxyUrl').value = c.proxyUrl; $('#recaptchaKey').value = c.recaptchaKey;
   $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
+  $('#ttsEngine').value = c.ttsEngine || 'browser'; $('#vvUrl').value = c.vvUrl || 'http://localhost:50021'; fillVV(c.vvSpeaker);
   fillVoices(); $('#voiceRate').value = c.rate || 1; $('#voicePitch').value = c.pitch || 1;
   dlg.showModal();
 }
+function fillVV(cur, list){
+  const sel = $('#vvSpeaker'); sel.textContent = '';
+  (list || [{ id:cur || 3, label:'話者ID ' + (cur || 3) + '（「声を読み込む」で一覧）' }]).forEach(s => { const o = el('option', '', s.label); o.value = s.id; sel.append(o); });
+  sel.value = String(cur || 3);
+}
+$('#vvLoad').addEventListener('click', async () => {
+  const keep = O.cfg.vvUrl; O.cfg.vvUrl = $('#vvUrl').value.trim() || keep;
+  try{ const l = await O.vv.speakers(); fillVV(+$('#vvSpeaker').value, l); toast(`${l.length}件の声を読み込みました`); }
+  catch(e){ toast('VOICEVOXに接続できません。エンジンを起動して、許可の設定をしてください'); }
+  O.cfg.vvUrl = keep;
+});
 function fillVoices(){
   const sel = $('#voiceName'); sel.textContent = '';
   const vs = ('speechSynthesis' in window ? speechSynthesis.getVoices() : []).slice().sort((a, b) => (/^ja/i.test(b.lang) - /^ja/i.test(a.lang)) || a.name.localeCompare(b.name));
@@ -784,7 +804,10 @@ if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged'
 $('#voiceTest').addEventListener('click', () => {
   const keep = { n:O.cfg.voiceName, r:O.cfg.rate, p:O.cfg.pitch };
   O.cfg.voiceName = $('#voiceName').value; O.cfg.rate = +$('#voiceRate').value; O.cfg.pitch = +$('#voicePitch').value;
+  const kk = { e:O.cfg.ttsEngine, u:O.cfg.vvUrl, s:O.cfg.vvSpeaker };
+  O.cfg.ttsEngine = $('#ttsEngine').value; O.cfg.vvUrl = $('#vvUrl').value.trim() || kk.u; O.cfg.vvSpeaker = +$('#vvSpeaker').value || 3;
   speak('こんにちは。Orbitです。この声と速さで読み上げます。', true);
+  O.cfg.ttsEngine = kk.e; O.cfg.vvUrl = kk.u; O.cfg.vvSpeaker = kk.s;
   O.cfg.voiceName = keep.n; O.cfg.rate = keep.r; O.cfg.pitch = keep.p;
 });
 $('#cancelSettings').addEventListener('click', () => dlg.close());
@@ -796,6 +819,7 @@ $('#settingsForm').addEventListener('submit', async e => {
   c.models = { gemini:$('#mGemini').value.trim() || O.defaults.models.gemini, llama:$('#mLlama').value.trim() || O.defaults.models.llama, gpt:$('#mGpt').value.trim() || O.defaults.models.gpt };
   c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value;
   c.voice = $('#voiceOn').checked; c.wake = $('#wakeOn').checked;
+  c.ttsEngine = $('#ttsEngine').value; c.vvUrl = $('#vvUrl').value.trim() || 'http://localhost:50021'; c.vvSpeaker = +$('#vvSpeaker').value || 3;
   c.voiceName = $('#voiceName').value; c.rate = +$('#voiceRate').value || 1; c.pitch = +$('#voicePitch').value || 1;
   if(c.cityKey === 'geo'){
     try{ c.geo = await O.geoLocate(); }catch(err){ toast(err.message); c.cityKey = 'tokyo'; }

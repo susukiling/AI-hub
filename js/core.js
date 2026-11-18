@@ -24,7 +24,7 @@ O.CITIES = {
 };
 const defaults = {
   groqKey:'', geminiKey:'', rememberKeys:true, proxyUrl:'', recaptchaKey:'',
-  voice:true, wake:false, profile:'', voiceName:'', rate:1, pitch:1,
+  voice:true, wake:false, profile:'', voiceName:'', rate:1, pitch:1, ttsEngine:'browser', vvUrl:'http://localhost:50021', vvSpeaker:3,
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
   share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true },

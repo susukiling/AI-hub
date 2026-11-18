@@ -121,3 +121,4 @@
 .speak-btn:hover{opacity:1}
 .msg .speak-btn{display:block;margin-top:2px}
 #voiceRate,#voicePitch{width:100%}
+.vv-row{display:flex;gap:8px;align-items:center}.vv-row .field{flex:1}
