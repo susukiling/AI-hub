@@ -56,7 +56,7 @@ function cleanAction(a){
     const s = new Date(a.start), e = new Date(a.end);
     if(!isNaN(s) && !isNaN(e) && e > s) return { type:'add_event', title:String(a.title).slice(0, 120), start:s.toISOString(), end:e.toISOString() };
   }
-  return null;
+  return (O.ws && O.ws.clean(a)) || null;
 }
 function actionLabel(a){
   return ({
@@ -64,7 +64,7 @@ function actionLabel(a){
     set_timer:`${Math.max(1, Math.round(a.seconds / 60))}分タイマーを開始`,
     delegate:'AIチームに任せる',
     add_event:'予定に入れる'
-  })[a.type] || '実行';
+  })[a.type] || (O.ws && O.ws.label(a)) || '実行';
 }
 
 /* =========================================================
@@ -595,6 +595,18 @@ $('#feedRefresh').addEventListener('click', loadFeed);
    Jarvis
    ========================================================= */
 let chatHist = [];
+const WS_ACTIONS = `
+以下は、ドライブで選ばれたファイルだけが対象です。fileは「書き込みの提案ができるファイル名」のとおりに書きます。実行前にユーザーの確認カードが出るので、勝手に変更されることはありません。削除は、消す文章を原文のまま正確に書きます。
+- {"type":"doc_append","file":"名前","text":"末尾に足す文章"}
+- {"type":"doc_replace","file":"名前","find":"置換前","replace":"置換後"}
+- {"type":"doc_delete","file":"名前","find":"消す文章"}
+- {"type":"sheet_write","file":"名前","range":"Sheet1!A1:B2","values":[["a","b"],[1,2]]}
+- {"type":"sheet_append","file":"名前","sheet":"Sheet1","values":[["行の値"]]}
+- {"type":"sheet_clear","file":"名前","range":"Sheet1!A2:B5"}
+- {"type":"slide_replace","file":"名前","find":"置換前","replace":"置換後"}
+- {"type":"slide_add","file":"名前","title":"題","body":"本文"}
+- {"type":"form_add_question","file":"名前","title":"質問","kind":"text か choice","options":["選択肢"]}
+- {"type":"form_delete_question","file":"名前","title":"質問文そのまま"}`;
 function jarvisPrompt(){
   return `あなたは「Orbit」、映画のジャービスのように落ち着いて有能な日本語のマネージャー型AIアシスタントです。依頼に簡潔に答え、必要なら操作を実行します。
 下の「状況」に書かれている予定・天気・タスクを根拠に答えてください。書かれていないことは分からないと伝えます。
@@ -605,6 +617,7 @@ actionsには必要なものだけ入れます。
 - {"type":"set_timer","seconds":300,"label":"ラベル"}
 - {"type":"delegate","task":"複数のAIに取り組ませる課題を具体的に"}  調査・企画・比較・文章作成など時間のかかる依頼に使う
 - {"type":"add_event","title":"予定名","start":"ISO8601(+09:00)","end":"ISO8601(+09:00)"}  日時が明確なときだけ。実行前にユーザーの確認カードが出ます
+${O.ws && O.ws.canWrite() ? WS_ACTIONS : ''}
 
 状況:
 ${contextText()}`;
@@ -671,7 +684,7 @@ async function sendChat(text){
     chatHist.push({ role:'assistant', content:res.text });
     const acts = out.actions.slice(0, 4).map(cleanAction).filter(Boolean);
     log(res.agent, 'Jarvis: ' + out.reply.slice(0, 70));
-    addMsg('ai', out.reply, { agent:res.agent, demo:res.demo, chips:acts.map(a => ({ add_task:'タスク追加', set_timer:'タイマー', delegate:'チームへ依頼', add_event:'予定の確認カード' })[a.type]) });
+    addMsg('ai', out.reply, { agent:res.agent, demo:res.demo, chips:acts.map(a => ({ add_task:'タスク追加', set_timer:'タイマー', delegate:'チームへ依頼', add_event:'予定の確認カード' })[a.type] || (O.ws && O.ws.label(a) + '（確認カード）')) });
     runActions(acts); speak(out.reply);
   }catch(e){
     delete um.media;
@@ -683,6 +696,7 @@ function runActions(list){
     if(a.type === 'add_task') addTask(a.text);
     else if(a.type === 'set_timer') addTimer(a.seconds, a.label);
     else if(a.type === 'delegate'){ $('#teamTask').value = a.task; runTeam(a.task, true); }
+    else if(O.ws && O.ws.isWs(a.type)) O.ws.propose(a);
     else if(a.type === 'add_event'){
       pushCard({ kind:'suggest', title:`予定を追加: ${a.title}`, body:`${new Date(a.start).toLocaleString('ja-JP', { month:'numeric', day:'numeric', hour:'2-digit', minute:'2-digit' })} から ${O.fmtTime(a.end)}。よければ「予定に入れる」を押してください。`, action:a });
       toast('予定の確認カードをフィードに出しました');

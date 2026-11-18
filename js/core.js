@@ -27,7 +27,7 @@ const defaults = {
   voice:true, wake:false, profile:'', voiceName:'', rate:1, pitch:1, ttsEngine:'browser', vvUrl:'http://localhost:50021', vvSpeaker:3,
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
-  share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true },
+  share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true, write:true },
   models:{ gemini:'gemini-3.6-flash', llama:'qwen/qwen3.8-27b', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;

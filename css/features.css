@@ -122,3 +122,12 @@
 .msg .speak-btn{display:block;margin-top:2px}
 #voiceRate,#voicePitch{width:100%}
 .vv-row{display:flex;gap:8px;align-items:center}.vv-row .field{flex:1}
+
+#wsConfirm{width:min(620px,calc(100vw - 32px))}
+.wsc h3{margin:0 0 4px}.wsc.danger h3{color:var(--err)}
+.wsc-file{margin:0 0 10px;color:var(--sky);font-size:13px}
+.wsc-line{margin:6px 0;font-size:13px;line-height:1.7;overflow-wrap:anywhere}
+.wsc h6{margin:10px 0 3px;font:600 11px var(--font-display);letter-spacing:.08em;color:var(--muted)}
+.wsc-pre{margin:0;padding:10px 12px;border-radius:12px;white-space:pre-wrap;overflow-wrap:anywhere;max-height:200px;overflow:auto;font:12.5px/1.6 var(--font-body)}
+.wsc-pre.before{background:rgba(255,138,138,.12);border:1px solid rgba(255,138,138,.35)}
+.wsc-pre.after{background:rgba(74,222,128,.1);border:1px solid rgba(74,222,128,.35)}
