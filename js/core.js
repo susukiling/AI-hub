@@ -24,11 +24,11 @@ O.CITIES = {
 };
 const defaults = {
   groqKey:'', geminiKey:'', rememberKeys:true, proxyUrl:'', recaptchaKey:'',
-  voice:true, wake:false, profile:'',
+  voice:true, wake:false, profile:'', voiceName:'', rate:1, pitch:1,
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
   share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true },
-  models:{ gemini:'gemini-3.6-flash', llama:'qwen/qwen3.6-27b', gpt:'openai/gpt-oss-120b' }
+  models:{ gemini:'gemini-3.6-flash', llama:'qwen/qwen3.8-27b', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
@@ -37,7 +37,7 @@ O.cfg.share = Object.assign({}, defaults.share, O.cfg.share || {});
 // 以前に保存された古いGeminiのモデル名（2.0/2.5系は終了）は、新しい既定に自動で置き換える
 if(/^gemini-2\.[05]/.test(O.cfg.models.gemini || '')) O.cfg.models.gemini = defaults.models.gemini;
 // Groqで終了したLlamaは、後継の既定に置き換える（無料・開発者アカウントは2026/8/16に利用不可）
-if(/^(meta-llama\/)?llama-/.test(O.cfg.models.llama || '')) O.cfg.models.llama = defaults.models.llama;
+if(/^(meta-llama\/)?llama-|qwen3\.6/.test(O.cfg.models.llama || '')) O.cfg.models.llama = defaults.models.llama;
 delete O.cfg.fbConfig;   // firebaseConfigは js/firebase-config.js だけに書く（以前の設定画面の値は使わない）
 /* APIキーは設定本体とは別の入れ物に保存する。
    「このブラウザに保存する」をオフにすると、タブを閉じるまでしか残さない。 */
@@ -125,7 +125,7 @@ async function proxyFetch(path, payload){
   }
   return fetch(O.proxyUrl() + path, { method:'POST', headers:h, body:JSON.stringify(payload) });
 }
-const GROQ_FALLBACK = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b', 'openai/gpt-oss-20b'];
+const GROQ_FALLBACK = ['openai/gpt-oss-120b', 'qwen/qwen3.8-27b', 'openai/gpt-oss-20b'];
 async function callGroq(model, o){
   const cands = [model, ...GROQ_FALLBACK.filter(m => m !== model)];
   let last;

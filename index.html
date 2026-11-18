@@ -254,11 +254,15 @@
     <label class="switch"><input type="checkbox" id="rememberKeys"> このブラウザにキーを保存する（オフなら、タブを閉じると消えます）</label>
     <label>モデル名（変更可）</label>
     <div class="grid2">
-      <div><label for="mGemini" style="margin-top:0">Gemini</label><input class="field" id="mGemini"></div>
-      <div><label for="mLlama" style="margin-top:0">Qwen（Groq）</label><input class="field" id="mLlama"></div>
-      <div><label for="mGpt" style="margin-top:0">GPT-OSS（Groq）</label><input class="field" id="mGpt"></div>
+      <div><label for="mGemini" style="margin-top:0">Gemini</label><input class="field" id="mGemini" list="dlGemini"></div>
+      <div><label for="mLlama" style="margin-top:0">Qwen（Groq）</label><input class="field" id="mLlama" list="dlQwen"></div>
+      <div><label for="mGpt" style="margin-top:0">GPT-OSS（Groq）</label><input class="field" id="mGpt" list="dlGpt"></div>
     </div>
 
+    <datalist id="dlGemini"><option value="gemini-3.8-flash"><option value="gemini-3.6-flash"><option value="gemini-3.5-flash"><option value="gemini-3.5-flash-lite"></datalist>
+    <datalist id="dlQwen"><option value="qwen/qwen3.8-27b"></datalist>
+    <datalist id="dlGpt"><option value="openai/gpt-oss-120b"><option value="openai/gpt-oss-20b"></datalist>
+    <p class="note" style="margin:8px 0 0">入力欄をタップすると候補が出ます。Groqの一覧: console.groq.com/docs/models</p>
     <h5>共有プロキシ（Cloudflare Workers）</h5>
     <label for="proxyUrl">WorkerのURL（自分のキーが空でも、Googleログイン中ならAIが使えます）</label>
     <input class="field" id="proxyUrl" type="url" autocomplete="off" placeholder="https://orbit-proxy.xxxx.workers.dev">
@@ -273,6 +277,13 @@
       <option value="geo">現在地（ブラウザの許可が必要）</option>
     </select>
     <label class="switch"><input type="checkbox" id="voiceOn"> Jarvisの返答を音声で読み上げる</label>
+    <label for="voiceName">読み上げの声（端末にある声から選べます）</label>
+    <select class="field" id="voiceName"></select>
+    <div class="grid2">
+      <div><label for="voiceRate" style="margin-top:0">速さ</label><input id="voiceRate" type="range" min="0.7" max="1.5" step="0.05" value="1"></div>
+      <div><label for="voicePitch" style="margin-top:0">高さ</label><input id="voicePitch" type="range" min="0.6" max="1.4" step="0.05" value="1"></div>
+    </div>
+    <button class="btn sm" type="button" id="voiceTest">試し聞き</button>
     <label class="switch"><input type="checkbox" id="wakeOn"> 「ジャービス」「オービット」で呼びかけて起動（このタブを開いている間、マイクを使い続けます）</label>
 
     <h5>reCAPTCHA（任意）</h5>

@@ -76,12 +76,32 @@ function updateJarvisMeta(){
   $('#jarvisMeta').textContent = `頭脳 ${AGENTS[$('#brain').value].name} ・ ${ORB_LABEL[s] || ''}`;
 }
 function setOrb(s){ $('#orb').dataset.state = s; $('#orbState').textContent = ORB_LABEL[s] || ''; updateJarvisMeta(); }
-function speak(t){
-  if(!O.cfg.voice || !('speechSynthesis' in window)){ setOrb('idle'); return; }
+/* 読み上げ（ブラウザの音声。声・速さ・高さは設定で変えられる）。force=trueなら、設定のオン/オフに関わらず読む */
+function ttsVoice(){
+  const vs = speechSynthesis.getVoices();
+  return vs.find(v => v.name === O.cfg.voiceName) || vs.find(v => /^ja/i.test(v.lang)) || null;
+}
+function speak(t, force){
+  if(!('speechSynthesis' in window) || (!force && !O.cfg.voice)){ setOrb('idle'); return; }
   speechSynthesis.cancel();
-  const u = new SpeechSynthesisUtterance(String(t).slice(0, 260)); u.lang = 'ja-JP';
-  u.onstart = () => setOrb('speaking'); u.onend = u.onerror = () => setOrb('idle');
-  speechSynthesis.speak(u);
+  const text = String(t).replace(/\s+/g, ' ').trim().slice(0, 1500);
+  if(!text){ setOrb('idle'); return; }
+  const chunks = []; let cur = '';
+  (text.match(/[^。！？!?]+[。！？!?]?/g) || [text]).forEach(p => { if((cur + p).length > 120 && cur){ chunks.push(cur); cur = ''; } cur += p; });
+  if(cur) chunks.push(cur);
+  const v = ttsVoice();
+  chunks.forEach((c, i) => {
+    const u = new SpeechSynthesisUtterance(c); u.lang = 'ja-JP';
+    if(v){ u.voice = v; u.lang = v.lang; }
+    u.rate = +O.cfg.rate || 1; u.pitch = +O.cfg.pitch || 1;
+    if(i === 0) u.onstart = () => setOrb('speaking');
+    if(i === chunks.length - 1) u.onend = u.onerror = () => setOrb('idle');
+    speechSynthesis.speak(u);
+  });
+}
+function toggleSpeak(t){
+  if('speechSynthesis' in window && speechSynthesis.speaking){ speechSynthesis.cancel(); setOrb('idle'); return; }
+  speak(t, true);
 }
 
 const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
@@ -598,6 +618,10 @@ function addMsg(kind, text, opt = {}){
     d.append(row);
   }
   d.append(document.createTextNode(text));
+  if(kind === 'ai' && 'speechSynthesis' in window){
+    const sp = el('button', 'speak-btn', '🔊'); sp.type = 'button'; sp.setAttribute('aria-label', 'この返答を読み上げる／止める');
+    sp.onclick = () => toggleSpeak(text); d.append(sp);
+  }
   const chips = (opt.chips || []).concat(opt.att || []);
   if(chips.length){
     const ch = el('div', 'chips'); chips.forEach(x => ch.append(el('span', 'chip', x))); d.append(ch);
@@ -720,7 +744,7 @@ $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); open
 $('#drawerConnectors').addEventListener('click', () => { toggleDrawer(false); O.connectors.open(); });
 $('#newChatBtn').addEventListener('click', newChat);
 $('#histBtn').addEventListener('click', () => setView('history'));
-O.ui = { updateAccount, addMsg, speak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
+O.ui = { updateAccount, addMsg, speak, toggleSpeak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
 
 /* =========================================================
    設定
@@ -746,8 +770,23 @@ function openSettings(){
   $('#profile').value = c.profile; $('#cityKey').value = c.cityKey;
   $('#rememberKeys').checked = c.rememberKeys !== false; $('#proxyUrl').value = c.proxyUrl; $('#recaptchaKey').value = c.recaptchaKey;
   $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
+  fillVoices(); $('#voiceRate').value = c.rate || 1; $('#voicePitch').value = c.pitch || 1;
   dlg.showModal();
 }
+function fillVoices(){
+  const sel = $('#voiceName'); sel.textContent = '';
+  const vs = ('speechSynthesis' in window ? speechSynthesis.getVoices() : []).slice().sort((a, b) => (/^ja/i.test(b.lang) - /^ja/i.test(a.lang)) || a.name.localeCompare(b.name));
+  const auto = el('option', '', '自動（日本語の声）'); auto.value = ''; sel.append(auto);
+  vs.forEach(v => { const o = el('option', '', `${v.name}（${v.lang}）`); o.value = v.name; sel.append(o); });
+  sel.value = O.cfg.voiceName || '';
+}
+if('speechSynthesis' in window) speechSynthesis.addEventListener('voiceschanged', () => { if(dlg.open) fillVoices(); });
+$('#voiceTest').addEventListener('click', () => {
+  const keep = { n:O.cfg.voiceName, r:O.cfg.rate, p:O.cfg.pitch };
+  O.cfg.voiceName = $('#voiceName').value; O.cfg.rate = +$('#voiceRate').value; O.cfg.pitch = +$('#voicePitch').value;
+  speak('こんにちは。Orbitです。この声と速さで読み上げます。', true);
+  O.cfg.voiceName = keep.n; O.cfg.rate = keep.r; O.cfg.pitch = keep.p;
+});
 $('#cancelSettings').addEventListener('click', () => dlg.close());
 $('#settingsForm').addEventListener('submit', async e => {
   e.preventDefault();
@@ -757,6 +796,7 @@ $('#settingsForm').addEventListener('submit', async e => {
   c.models = { gemini:$('#mGemini').value.trim() || O.defaults.models.gemini, llama:$('#mLlama').value.trim() || O.defaults.models.llama, gpt:$('#mGpt').value.trim() || O.defaults.models.gpt };
   c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value;
   c.voice = $('#voiceOn').checked; c.wake = $('#wakeOn').checked;
+  c.voiceName = $('#voiceName').value; c.rate = +$('#voiceRate').value || 1; c.pitch = +$('#voicePitch').value || 1;
   if(c.cityKey === 'geo'){
     try{ c.geo = await O.geoLocate(); }catch(err){ toast(err.message); c.cityKey = 'tokyo'; }
   }

@@ -116,3 +116,8 @@
 
 .drv-row{display:flex;align-items:center;justify-content:space-between;gap:8px;margin:4px 0}
 .drv-row .switch{margin:0}
+
+.speak-btn{background:none;border:0;cursor:pointer;font-size:14px;opacity:.7;padding:0 4px;color:inherit}
+.speak-btn:hover{opacity:1}
+.msg .speak-btn{display:block;margin-top:2px}
+#voiceRate,#voicePitch{width:100%}

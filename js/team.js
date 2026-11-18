@@ -38,6 +38,9 @@ function buildTrio(states){
     const c = el('div', 'tcard'); c.dataset.slot = slot; c.dataset.state = 'idle';
     const h = el('div', 'tc-h');
     h.append(el('i', 'dot'));
+    const sp = el('button', 'speak-btn', '🔊'); sp.type = 'button'; sp.setAttribute('aria-label', 'この答えを読み上げる／止める');
+    sp.onclick = () => O.ui.toggleSpeak(c.querySelector('.tc-body').textContent);
+    h.append(sp);
     const nm = el('span', 'tc-name', NAME(slot)); nm.dataset.a = slot;
     h.append(nm, el('span', 'tc-step', '待機中'));
     const body = el('div', 'tc-body out idle', states ? '' : 'ここにこのAIの答えが出ます');
