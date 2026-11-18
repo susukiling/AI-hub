@@ -166,23 +166,28 @@ async function callGemini(model, o){
   return { text, sources, suggest };
 }
 /* Geminiのモデル名が終了・未提供（404など）のときは、次の候補を試し、通ったものを設定に覚える */
-O.GEMINI_FALLBACK = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'];
+O.GEMINI_FALLBACK = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
 async function callGeminiWithFallback(model, o){
   const cands = [model, ...O.GEMINI_FALLBACK.filter(m => m !== model)].slice(0, 4);
-  let lastErr;
+  const QUOTA = /429|quota|exceeded|resource.?exhausted/i;
+  let lastErr, quotaHit = false;
   for(const m of cands){
     try{
       const r = await callGemini(m, o);
-      if(m !== model){
+      if(m !== model && !quotaHit){
         O.cfg.models.gemini = m; O.saveCfg();
         O.log('sys', `Geminiのモデルを ${model} から ${m} に切り替えました`);
       }
       return r;
     }catch(e){
+      if(QUOTA.test(e.message)){            // 無料枠はモデルごとに数えるので、別のモデルを試す（設定は書き換えない）
+        lastErr = e; quotaHit = true; continue;
+      }
       lastErr = e;
       if(!/404|no longer available|not found|not supported|is not available/i.test(e.message)) throw e;
     }
   }
+  if(quotaHit) throw new Error('Geminiの無料枠の上限に達しました（どのモデルでも）。しばらく待つか、Google AI StudioのAPIキーを設定に入れるか、請求を有効にしてください。Llama/GPT-OSS（Groq）は引き続き使えます');
   throw lastErr;
 }
 O.callAI = async function(want, o){
