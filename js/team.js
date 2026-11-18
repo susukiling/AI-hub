@@ -1,4 +1,4 @@
-/* team.js: AI Team。Llama・GPT-OSS・Geminiが独立に答え、互いの誤りを指摘し合って修正する */
+/* team.js: AI Team。Qwen・GPT-OSS・Geminiが独立に答え、互いの誤りを指摘し合って修正する */
 (function(){
 'use strict';
 const O = window.O;

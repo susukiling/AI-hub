@@ -28,7 +28,7 @@ const defaults = {
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
   share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true },
-  models:{ gemini:'gemini-3.6-flash', llama:'llama-3.3-70b-versatile', gpt:'openai/gpt-oss-120b' }
+  models:{ gemini:'gemini-3.6-flash', llama:'qwen/qwen3.6-27b', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
@@ -36,6 +36,8 @@ O.cfg.models = Object.assign({}, defaults.models, O.cfg.models || {});
 O.cfg.share = Object.assign({}, defaults.share, O.cfg.share || {});
 // 以前に保存された古いGeminiのモデル名（2.0/2.5系は終了）は、新しい既定に自動で置き換える
 if(/^gemini-2\.[05]/.test(O.cfg.models.gemini || '')) O.cfg.models.gemini = defaults.models.gemini;
+// Groqで終了したLlamaは、後継の既定に置き換える（無料・開発者アカウントは2026/8/16に利用不可）
+if(/^(meta-llama\/)?llama-/.test(O.cfg.models.llama || '')) O.cfg.models.llama = defaults.models.llama;
 delete O.cfg.fbConfig;   // firebaseConfigは js/firebase-config.js だけに書く（以前の設定画面の値は使わない）
 /* APIキーは設定本体とは別の入れ物に保存する。
    「このブラウザに保存する」をオフにすると、タブを閉じるまでしか残さない。 */
@@ -58,7 +60,7 @@ O.city = () => (O.cfg.cityKey === 'geo' && O.cfg.geo) ? O.cfg.geo : (O.CITIES[O.
 
 O.AGENTS = {
   gemini:{ name:'Gemini',  provider:'gemini' },
-  llama: { name:'Llama',   provider:'groq' },
+  llama: { name:'Qwen',    provider:'groq' },     // 内部IDは古いまま（llama）。以前のLlamaがGroqで終了したため、Qwenに変更
   gpt:   { name:'GPT-OSS', provider:'groq' }
 };
 O.ownKey = p => p === 'groq' ? !!(O.cfg.groqKey || '').trim() : !!(O.cfg.geminiKey || '').trim();
@@ -123,10 +125,30 @@ async function proxyFetch(path, payload){
   }
   return fetch(O.proxyUrl() + path, { method:'POST', headers:h, body:JSON.stringify(payload) });
 }
+const GROQ_FALLBACK = ['openai/gpt-oss-120b', 'qwen/qwen3.6-27b', 'openai/gpt-oss-20b'];
 async function callGroq(model, o){
+  const cands = [model, ...GROQ_FALLBACK.filter(m => m !== model)];
+  let last;
+  for(const m of cands){
+    try{
+      const r = await callGroqOnce(m, o);
+      if(m !== model){
+        const k = Object.keys(O.AGENTS).find(x => O.AGENTS[x].provider === 'groq' && O.cfg.models[x] === model);
+        if(k){ O.cfg.models[k] = m; O.saveCfg(); }
+        O.log('sys', `Groqのモデルを ${model} から ${m} に切り替えました`);
+      }
+      return r;
+    }catch(e){
+      last = e;
+      if(!/404|does not exist|decommission|no longer|not found/i.test(e.message)) throw e;
+    }
+  }
+  throw last;
+}
+async function callGroqOnce(model, o){
   // 分類・安全確認・音声用のモデルは、会話には使えない。会話用の既定モデルに置き換える
   if(/guard|safeguard|whisper|tts|orpheus|embed|classif/i.test(model)){
-    const d = O.defaults.models[Object.keys(O.AGENTS).find(k => O.AGENTS[k].provider === 'groq' && O.cfg.models[k] === model)] || 'llama-3.3-70b-versatile';
+    const d = O.defaults.models[Object.keys(O.AGENTS).find(k => O.AGENTS[k].provider === 'groq' && O.cfg.models[k] === model)] || 'openai/gpt-oss-120b';
     O.log('sys', `${model} は会話用のモデルではないため、${d} を使います。設定のモデル名を直してください`);
     model = d;
   }
@@ -143,8 +165,9 @@ async function callGroq(model, o){
   if(!r.ok) throw new Error('Groq: ' + await errText(r));
   const j = await r.json();
   const t = j.choices && j.choices[0] && j.choices[0].message && j.choices[0].message.content;
-  if(!t) throw new Error('Groq: 空の応答');
-  return { text:t, sources:[] };
+  const clean = t.replace(/<think>[\s\S]*?<\/think>/gi, '').trim();   // 推論モデルの考え中の部分は表示しない
+  if(!clean) throw new Error('Groq: 空の応答');
+  return { text:clean, sources:[] };
 }
 async function callGemini(model, o){
   // 呼び出しの優先順: 自分のキー → Firebase AI Logic（鍵なし） → 共有プロキシ
@@ -193,7 +216,7 @@ async function callGeminiWithFallback(model, o){
       if(!/404|no longer available|not found|not supported|is not available/i.test(e.message)) throw e;
     }
   }
-  if(quotaHit) throw new Error('Geminiの無料枠の上限に達しました（どのモデルでも）。しばらく待つか、Google AI StudioのAPIキーを設定に入れるか、請求を有効にしてください。Llama/GPT-OSS（Groq）は引き続き使えます');
+  if(quotaHit) throw new Error('Geminiの無料枠の上限に達しました（どのモデルでも）。しばらく待つか、Google AI StudioのAPIキーを設定に入れるか、請求を有効にしてください。Qwen/GPT-OSS（Groq）は引き続き使えます');
   throw lastErr;
 }
 O.callAI = async function(want, o){
@@ -232,7 +255,7 @@ O.demoText = function(want, o){
         brief:'いまはデモ表示です。GeminiかGroqのキーを設定すると、天気・予定・タスクを見たうえで提案します。',
         cards:[
           { kind:'suggest', title:'朝の5分整理をしてみませんか？', body:'今日やることを3つに絞ると、午後が楽になります。', action:{ type:'set_timer', seconds:300, label:'5分整理' } },
-          { kind:'suggest', title:'AIチームに今週の献立を考えてもらう', body:'LlamaとGPT-OSSが分担して案を出し、Geminiがまとめます。', action:{ type:'delegate', task:'一人暮らし向けに、今週の夕食の献立と買い物リストを作って' } },
+          { kind:'suggest', title:'AIチームに今週の献立を考えてもらう', body:'QwenとGPT-OSSが分担して案を出し、Geminiがまとめます。', action:{ type:'delegate', task:'一人暮らし向けに、今週の夕食の献立と買い物リストを作って' } },
           { kind:'note', title:'ひとこと', body:'キーを設定すると、ここにあなたの予定や天気に合わせた提案が並びます。' }
         ]
       });
