@@ -140,3 +140,9 @@ firestore.rules      Firestoreのルール
 - 権限は `gmail.readonly`、`chat.messages.readonly`、`chat.spaces.readonly` だけ。使うと決めたときに、画面の「許可する」から追加します。送信・削除・変更はできません。
 - メール・チャットの本文は、Geminiにだけ渡します（Groq系には渡しません）。本文内の指示には従わないよう、AIに指示しています。
 - Google Cloud Consoleで、Gmail API と Google Chat API を有効にしてください。ChatのAPIは、公式にはWorkspaceアカウント向けです。
+
+## デザイン（Material 3の要素入り）
+- ダークのまま、色の役割・形・ボタン（塗り／淡い塗り）・スイッチ・チップ・波紋・ナビを Material 3 風に（`css/material.css`）。
+- 画面の幅で切り替え: スマホは下のナビバー、PCは左のナビレール。「その他」でメニューを開く。
+- ホームは、今日の予定・やること・天気・提案だけ。ニュース・スクリーンタイム・フォト・タイマーは「その他」から。
+- 「はじめかた・接続のようす」で、ログイン・連携・AIの準備を順に確認できる（そろうとホームでは隠れる）。

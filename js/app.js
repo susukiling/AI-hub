@@ -338,6 +338,7 @@ async function doConnect(){
   }
 }
 function updateAccount(){
+  setTimeout(() => { if(typeof renderSetup === 'function') renderSetup(); }, 0);
   const u = O.user;
   $('#loginBtn').hidden = !!u; $('#userChip').hidden = !u;
   const chip = $('#userChip'); chip.textContent = '';
@@ -769,14 +770,18 @@ const runTeam = (t, fromChat) => O.runTeam(t, !!fromChat);
 /* =========================================================
    メニュー（ハンバーガー）と画面切り替え
    ========================================================= */
-const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', mail:'.mail', log:'.log' };
-const HOME = ['brief', 'weather', 'feed', 'events', 'tasks', 'news', 'screen', 'photos', 'timers'];
+const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', mail:'.mail', setup:'.setup', log:'.log' };
+const HOME = ['brief', 'setup', 'events', 'tasks', 'weather', 'feed'];   // ホームは、毎日見るものだけ。ほかは「その他」から
 function setView(v){
   const single = v !== 'home' && TILE[v] ? v : null;
   $('#bento').classList.toggle('single', !!single);
   Object.keys(TILE).forEach(k => { $(TILE[k]).hidden = single ? k !== single : !HOME.includes(k); });
   $$('.nav-item').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
   store.set('view', single || 'home'); window.scrollTo({ top:0 });
+  $$('.nb-item[data-view]').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
+  $('#navMore').setAttribute('aria-current', String(!!single && !['jarvis', 'team', 'vision'].includes(single)));
+  $('#fab').hidden = !!single;
+  if(single === 'setup') renderSetup();
   if(single === 'history') O.hist.render();
   if(single === 'mail') O.mail.open();
 }
@@ -792,6 +797,43 @@ scrim.addEventListener('click', () => toggleDrawer(false));
 $('#closeDrawer').addEventListener('click', () => toggleDrawer(false));
 document.addEventListener('keydown', e => { if(e.key === 'Escape' && drawer.classList.contains('open')) toggleDrawer(false); });
 $$('.nav-item').forEach(n => n.addEventListener('click', () => { setView(n.dataset.view); toggleDrawer(false); }));
+$$('.nb-item[data-view]').forEach(n => n.addEventListener('click', () => setView(n.dataset.view)));
+$('#navMore').addEventListener('click', () => toggleDrawer(true));
+$('#fab').addEventListener('click', () => { setView('jarvis'); setTimeout(() => $('#chatInput').focus(), 50); });
+
+/* 押したところから広がる波紋（Material） */
+document.addEventListener('pointerdown', e => {
+  const t = e.target.closest('.btn,.icon-btn,.nb-ico,.fab,.hist-item,.plus-menu button,.nav-item');
+  if(!t || t.disabled || matchMedia('(prefers-reduced-motion:reduce)').matches) return;
+  const host = t.classList.contains('nb-item') ? t.querySelector('.nb-ico') : t;
+  if(getComputedStyle(host).position === 'static') host.style.position = 'relative';
+  const r = host.getBoundingClientRect(), d = Math.max(r.width, r.height) * 2;
+  const s = el('span', 'ripple'); s.style.cssText = `width:${d}px;height:${d}px;left:${e.clientX - r.left - d / 2}px;top:${e.clientY - r.top - d / 2}px`;
+  host.append(s); setTimeout(() => s.remove(), 600);
+}, { passive:true });
+
+/* はじめかた: いまどこまで進んでいるか、次に何を押せばいいかを、順に並べる */
+function renderSetup(){
+  const ol = $('#steps'); if(!ol) return;
+  ol.textContent = '';
+  const gem = O.resolve('gemini') === 'gemini', groq = O.hasKey('groq');
+  const step = (n, ok, title, sub, btn, opt) => {
+    const li = el('li', 'step' + (ok ? ' ok' : '') + (opt ? ' opt' : ''));
+    li.append(el('span', 'si', ok ? '✓' : String(n)));
+    const tx = el('div', 'tx'); tx.append(el('b', '', title), el('small', '', sub)); li.append(tx);
+    if(btn && !ok){ const b = el('button', 'btn sm' + (n === 1 || n === 2 ? ' primary' : ''), btn[0]); b.type = 'button'; b.onclick = btn[1]; li.append(b); }
+    ol.append(li);
+  };
+  step(1, !!O.user, 'Googleでログイン', O.user ? (O.user.email || 'ログイン中') : 'まずはここから。ログインすると、AIが鍵なしで使えて、会話履歴も保存されます。', ['ログイン', doLogin]);
+  step(2, O.google.valid, 'カレンダー・フォト・ドライブを連携', O.google.valid ? '連携中（約1時間で切れます。切れたら「連携を更新」）' : '予定の表示、写真の選択、ドライブのファイルを使うための許可です。', ['連携する', doConnect]);
+  step(3, gem, 'AI（Gemini）', gem ? '使えます' : 'ログインすると、鍵なしで使えるようになります。', ['設定を開く', openSettings]);
+  step(4, groq, 'Qwen・GPT-OSS（Groq）', groq ? '使えます' : '任意。なくても動きます（AIチームでは、Geminiが代役を務めます）。', ['キーを入れる', openSettings], true);
+  step(5, !!(O.cfg.ext.gmail || O.cfg.ext.chat), 'メール・チャット（読み取り専用）', '任意。使いたいときだけ許可します。', ['開く', () => setView('mail')], true);
+  const need = [!!O.user, O.google.valid, gem].filter(x => !x).length;
+  $('#setupMeta').textContent = need ? `あと${need}つ` : '準備できました';
+  $('#setupCard').classList.toggle('complete', !need);
+}
+O.ui_renderSetup = renderSetup;
 $('#brain').addEventListener('change', () => { updateJarvisMeta(); toast('Jarvisの頭脳: ' + AGENTS[$('#brain').value].name); log('sys', '頭脳を切り替え: ' + AGENTS[$('#brain').value].name); });
 $('#userChip').addEventListener('click', () => toggleDrawer(true));
 $('#loginBtn').addEventListener('click', doLogin);
@@ -876,7 +918,7 @@ $('#settingsForm').addEventListener('submit', async e => {
   if(c.cityKey === 'geo'){
     try{ c.geo = await O.geoLocate(); }catch(err){ toast(err.message); c.cityKey = 'tokyo'; }
   }
-  O.saveCfg(); dlg.close(); refreshPills(); pickBrain(); log('sys', '設定を保存');
+  O.saveCfg(); dlg.close(); refreshPills(); pickBrain(); renderSetup(); log('sys', '設定を保存');
   if(c.wake) startWake(); else stopWake();
   if(c.recaptchaKey !== oldRk){ toast('reCAPTCHAの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
   if(c.cityKey !== oldCity || c.cityKey === 'geo') loadWeather();
@@ -901,7 +943,7 @@ function updateHello(){
 (function boot(){
   refreshPills(); pickBrain();
   renderTasks(); renderTimers(); renderFeed(); renderScreen(); renderPhotos(); renderWeather(); renderEvents();
-  setOrb('idle'); updateHello(); updateAccount();
+  setOrb('idle'); updateHello(); updateAccount(); renderSetup();
   $('#briefLine').textContent = store.get('brief', '') || '「提案を更新」を押すと、今日の状況を見てまとめます。';
   setView(store.get('view', 'home'));
   O.startUsageTracker();
@@ -915,7 +957,7 @@ function updateHello(){
   loadWeather();
   // Gemini用のFirebase AI Logic（鍵なし）を先に準備してから、AIを使う処理を始める
   O.initAI().catch(() => false).then(() => {
-    refreshPills(); pickBrain(); aiWas = O.anyKey();
+    refreshPills(); pickBrain(); aiWas = O.anyKey(); renderSetup();
     if(O.aiReady) log('gemini', 'Firebase AI Logic に接続しました（鍵なしでGeminiが使えます）');
     else if(O.aiProblem) log('sys', O.aiProblem);
     addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null, nosave:true });

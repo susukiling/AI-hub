@@ -3,7 +3,7 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
-<meta name="theme-color" content="#060a14">
+<meta name="theme-color" content="#0b1220">
 <title>Orbit</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -11,6 +11,7 @@
 <link rel="stylesheet" href="css/base.css">
 <link rel="stylesheet" href="css/home.css">
 <link rel="stylesheet" href="css/features.css">
+<link rel="stylesheet" href="css/material.css">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -48,6 +49,12 @@
           <button class="btn primary" type="submit">送る</button>
         </form>
       </div>
+    </article>
+
+    <!-- Setup / connection status -->
+    <article class="glass setup" id="setupCard" aria-label="はじめかたと接続のようす">
+      <div class="tile-h"><h2>はじめかた・接続のようす</h2><span class="meta" id="setupMeta"></span></div>
+      <ol class="steps" id="steps"></ol>
     </article>
 
     <!-- Weather -->
@@ -242,6 +249,7 @@
   <button class="nav-item" type="button" data-view="team"><b>AI Team</b><small>複数のAIで分担して作業</small></button>
   <button class="nav-item" type="button" data-view="vision"><b>画像読み取り</b><small>画像 → 予定・タスク・問題</small></button>
   <button class="nav-item" type="button" data-view="history"><b>会話履歴</b><small>過去の会話を検索・再開</small></button>
+  <button class="nav-item" type="button" data-view="setup"><b>接続・はじめかた</b><small>ログイン・連携のようす</small></button>
   <button class="nav-item" type="button" data-view="mail"><b>メール・チャット</b><small>Gmail / Chat（読み取りのみ）</small></button>
   <button class="nav-item" type="button" data-view="feed"><b>提案フィード</b><small>エージェントからの提案</small></button>
   <button class="nav-item" type="button" data-view="events"><b>今日の予定</b><small>Googleカレンダー</small></button>
@@ -340,6 +348,14 @@
     <div id="connList"></div>
   </div>
 </dialog>
+<nav class="navbar" id="navbar" aria-label="メインナビゲーション">
+  <button class="nb-item" type="button" data-view="home" aria-label="ホーム"><span class="nb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg></span>ホーム</button>
+  <button class="nb-item" type="button" data-view="jarvis" aria-label="Jarvis"><span class="nb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 2H4c-1.1 0-2 .9-2 2v18l4-4h14c1.1 0 2-.9 2-2V4c0-1.1-.9-2-2-2z"/></svg></span>Jarvis</button>
+  <button class="nb-item" type="button" data-view="team" aria-label="AIチーム"><span class="nb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M16 11c1.66 0 2.99-1.34 2.99-3S17.66 5 16 5s-3 1.34-3 3 1.34 3 3 3zm-8 0c1.66 0 2.99-1.34 2.99-3S9.66 5 8 5 5 6.34 5 8s1.34 3 3 3zm0 2c-2.33 0-7 1.17-7 3.5V19h14v-2.5C15 14.17 10.33 13 8 13zm8 0c-.29 0-.62.02-.97.05 1.16.84 1.97 1.97 1.97 3.45V19h6v-2.5c0-2.33-4.67-3.5-7-3.5z"/></svg></span>AIチーム</button>
+  <button class="nb-item" type="button" data-view="vision" aria-label="画像"><span class="nb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 19V5c0-1.1-.9-2-2-2H5c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h14c1.1 0 2-.9 2-2zM8.5 13.5l2.5 3.01L14.5 12l4.5 6H5l3.5-4.5z"/></svg></span>画像</button>
+  <button class="nb-item nb-more" type="button" id="navMore" aria-label="そのほかのメニュー" aria-haspopup="dialog"><span class="nb-ico"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/></svg></span>その他</button>
+</nav>
+<button class="fab" id="fab" type="button" aria-label="Jarvisに話しかける"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 14c1.66 0 3-1.34 3-3V5c0-1.66-1.34-3-3-3S9 3.34 9 5v6c0 1.66 1.34 3 3 3zm5.3-3c0 3-2.54 5.1-5.3 5.1S6.7 14 6.7 11H5c0 3.41 2.72 6.23 6 6.72V21h2v-3.28c3.28-.48 6-3.3 6-6.72h-1.7z"/></svg>Jarvisに話す</button>
 <div class="toast" id="toast" role="status"></div>
 
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
