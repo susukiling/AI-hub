@@ -124,6 +124,12 @@ async function proxyFetch(path, payload){
   return fetch(O.proxyUrl() + path, { method:'POST', headers:h, body:JSON.stringify(payload) });
 }
 async function callGroq(model, o){
+  // 分類・安全確認・音声用のモデルは、会話には使えない。会話用の既定モデルに置き換える
+  if(/guard|safeguard|whisper|tts|orpheus|embed|classif/i.test(model)){
+    const d = O.defaults.models[Object.keys(O.AGENTS).find(k => O.AGENTS[k].provider === 'groq' && O.cfg.models[k] === model)] || 'llama-3.3-70b-versatile';
+    O.log('sys', `${model} は会話用のモデルではないため、${d} を使います。設定のモデル名を直してください`);
+    model = d;
+  }
   const msgs = []; if(o.system) msgs.push({ role:'system', content:o.system });
   msgs.push(...o.messages.map(m => ({ role:m.role, content:m.content })));   // 画像・PDFはGroqでは送らない
   const payload = { model, messages:msgs, temperature:o.temperature ?? 0.7 };
