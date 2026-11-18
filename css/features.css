@@ -136,3 +136,19 @@
 #searchBtn[aria-pressed=true]{background:linear-gradient(120deg,rgba(94,234,212,.35),rgba(138,180,255,.35));border-color:var(--mint)}
 .msg .sources{margin-top:6px;font-size:12px;display:flex;gap:6px;flex-wrap:wrap;color:var(--muted)}
 .msg .sources a{color:var(--sky);overflow-wrap:anywhere}
+
+/* Mail */
+.bento.single>.mail{width:min(100%,1180px)}
+.mail{display:flex;flex-direction:column}
+.mail-scroll{flex:1;min-height:0;overflow-y:auto;scrollbar-width:thin;display:flex;flex-direction:column;gap:10px}
+.mail-form{display:flex;gap:8px;flex-wrap:wrap;margin:8px 0}.mail-form .field{flex:1;min-width:160px}
+.mail-gate{padding:12px 14px;border-radius:16px;background:rgba(255,200,120,.1);border:1px solid rgba(255,200,120,.35);margin:6px 0}
+.mail-gate p{margin:4px 0;font-size:13px}
+#gmailPane.off,#chatPane.off{opacity:.4;pointer-events:none}
+.mail .hist-grid{min-height:280px;max-height:50vh}
+.mail-body{white-space:pre-wrap;overflow-wrap:anywhere;font:13px/1.7 var(--font-body);margin:8px 0 0;overflow:auto}
+#mailDetail small{white-space:pre-wrap;color:var(--muted)}
+#chatList{max-height:46vh}
+.mail-answer{padding:12px 14px;border-radius:16px;background:rgba(138,180,255,.1);border:1px solid rgba(138,180,255,.3)}
+.mail-ans{margin:6px 0 0;white-space:pre-wrap;line-height:1.7;font-size:13.5px}
+#mailTabs button[aria-selected=true]{background:linear-gradient(120deg,rgba(94,234,212,.3),rgba(138,180,255,.3));border-color:var(--mint)}

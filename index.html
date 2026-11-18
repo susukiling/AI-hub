@@ -202,6 +202,26 @@
       </div>
     </article>
 
+    <!-- Mail / Chat (full view) -->
+    <article class="glass mail" aria-label="メールとチャット">
+      <div class="tile-h"><h2>Mail &amp; Chat</h2><span class="meta">読み取り専用</span></div>
+      <div class="vis-modes" id="mailTabs" role="tablist"><button type="button" role="tab" data-tab="gmail" aria-selected="true">Gmail</button><button type="button" role="tab" data-tab="chat" aria-selected="false">Google Chat</button></div>
+      <p class="hint" id="mailHelp"></p>
+      <div class="mail-gate" id="mailGate" hidden></div>
+      <div class="mail-scroll">
+        <section id="gmailPane">
+          <form class="mail-form" id="mailForm"><input class="field" id="mailQ" placeholder="検索（例: from:田中 after:2026/11/01 has:attachment）" aria-label="Gmailを検索"><button class="btn primary" type="submit">検索</button></form>
+          <div class="hist-grid"><div class="hist-list" id="mailList"></div><div class="hist-view" id="mailDetail"></div></div>
+        </section>
+        <section id="chatPane" hidden>
+          <form class="mail-form" id="chatForm"><select class="select" id="chatSpace" aria-label="スペース"></select><input class="field" id="chatQ" placeholder="キーワード（空欄なら最新）" aria-label="キーワード"><button class="btn primary" type="submit">探す</button></form>
+          <div class="hist-list" id="chatList"></div>
+        </section>
+        <form class="mail-form ask" id="mailAskForm"><input class="field" id="mailAsk" placeholder="AIに質問（例: 先週の面談の連絡、どうなってた？）" aria-label="AIに質問"><button class="btn" type="submit">AIに聞く</button></form>
+        <div class="mail-answer" id="mailAnswer" hidden></div>
+      </div>
+    </article>
+
     <!-- Activity (full view) -->
     <article class="glass log" aria-label="アクティビティ">
       <div class="tile-h"><h2>Activity</h2><span class="meta">AIの動きを時系列で記録</span></div>
@@ -222,6 +242,7 @@
   <button class="nav-item" type="button" data-view="team"><b>AI Team</b><small>複数のAIで分担して作業</small></button>
   <button class="nav-item" type="button" data-view="vision"><b>画像読み取り</b><small>画像 → 予定・タスク・問題</small></button>
   <button class="nav-item" type="button" data-view="history"><b>会話履歴</b><small>過去の会話を検索・再開</small></button>
+  <button class="nav-item" type="button" data-view="mail"><b>メール・チャット</b><small>Gmail / Chat（読み取りのみ）</small></button>
   <button class="nav-item" type="button" data-view="feed"><b>提案フィード</b><small>エージェントからの提案</small></button>
   <button class="nav-item" type="button" data-view="events"><b>今日の予定</b><small>Googleカレンダー</small></button>
   <button class="nav-item" type="button" data-view="news"><b>ニュース</b><small>主要ニュース</small></button>
@@ -334,6 +355,7 @@
 <script src="js/vision.js"></script>
 <script src="js/drive.js"></script>
 <script src="js/workspace.js"></script>
+<script src="js/mail.js"></script>
 <script src="js/connectors.js"></script>
 <script src="js/voicevox.js"></script>
 <script src="js/app.js"></script>

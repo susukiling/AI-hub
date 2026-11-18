@@ -4,7 +4,7 @@
 const O = window.O;
 const { $, store, pad } = O;
 const MAX_CONVS = 60, MAX_MSGS = 200;
-const KIND = { jarvis:'Jarvis', team:'AI Team', vision:'画像' };
+const KIND = { jarvis:'Jarvis', team:'AI Team', vision:'画像', mail:'メール・チャット' };
 
 let convs = store.get('convs', []);
 const dirty = new Set();

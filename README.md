@@ -134,3 +134,9 @@ firestore.rules      Firestoreのルール
 - 追記・置き換え・行の追加・スライド／質問の追加は、内容を見せて確認ボタン1回。削除は、消す範囲を説明し、確認ボタン2回。
 - 使うには、Google Cloud Consoleで Docs / Sheets / Slides / Forms の各APIを有効にします。
 - コネクタ画面の「書き込みの提案」で、まとめてオフにできます。GAS・Gmail・Chat・Classroomは未対応です。
+
+## Gmail・Google Chat（読み取り専用）
+- 「メール・チャット」画面で、Gmailの検索（Gmailの検索式がそのまま使える）・本文の閲覧・AIへの質問ができます。Chatは、スペースを選んでキーワードで探せます（最新300件まで）。
+- 権限は `gmail.readonly`、`chat.messages.readonly`、`chat.spaces.readonly` だけ。使うと決めたときに、画面の「許可する」から追加します。送信・削除・変更はできません。
+- メール・チャットの本文は、Geminiにだけ渡します（Groq系には渡しません）。本文内の指示には従わないよう、AIに指示しています。
+- Google Cloud Consoleで、Gmail API と Google Chat API を有効にしてください。ChatのAPIは、公式にはWorkspaceアカウント向けです。

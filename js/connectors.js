@@ -32,13 +32,14 @@ const SERVICES = [
   { id:'gas', name:'Apps Script（GAS）', status:'soon',
     can:['コードを読む', 'コードを書き換える（変更点の差分を見せて確認してから）'],
     cant:['実行は絶対にしない', '権限の付与は絶対にしない', 'トリガー作成・デプロイはしない'], warn:'既にトリガーが設定されたスクリプトは、書き換えると次の自動実行で新しいコードが動きます。書き換え前に、トリガーの有無をお知らせします。' },
-  { id:'gmail', name:'Gmail', status:'soon', can:['メールを読む', '履歴を検索する（差出人・期間・キーワード）'], cant:['送信・返信・削除・ラベル変更'], warn:'メール本文はGeminiにだけ渡し、Groq系には渡しません。' },
-  { id:'chat', name:'Google Chat', status:'soon', can:['メッセージを読む', '履歴を検索する'], cant:['送信・削除'], warn:'Chat APIは、公式にはWorkspace（会社・学校）のアカウント向けです。個人のGmailでは使えない場合があります。' },
+  { id:'gmail', name:'Gmail', status:'live', can:['メールを読む', '履歴を検索する（差出人・期間・キーワード）'], cant:['送信・返信・削除・ラベル変更'], warn:'メール本文はGeminiにだけ渡し、Groq系には渡しません。' },
+  { id:'chat', name:'Google Chat', status:'live', can:['メッセージを読む', '履歴を検索する'], cant:['送信・削除'], warn:'Chat APIは、公式にはWorkspace（会社・学校）のアカウント向けです。個人のGmailでは使えない場合があります。' },
   { id:'classroom', name:'Classroom', status:'soon', can:['自分の課題・提出状況を読む（読み取り専用）'], cant:['課題の作成・提出・採点'] }
 ];
 
 function statusOf(s){
   if(s.status === 'soon') return ['準備中', 'soon'];
+  if(s.id === 'gmail' || s.id === 'chat') return O.cfg.ext[s.id] ? (O.google.valid ? ['許可済み', 'on'] : ['未連携', 'off']) : ['未許可', 'off'];
   if(s.id === 'calendar' || s.id === 'photos' || s.id === 'drive') return O.google.valid ? ['連携中', 'on'] : [O.user ? '未連携' : '未ログイン', 'off'];
   return ['', ''];
 }
@@ -114,6 +115,7 @@ function render(){
       };
       g.append(pb, el('p', 'hint', 'ドライブを許可した直後は、一度「連携を更新」を押すと、ファイルを選べるようになります。'));
     }
+    if(s.id === 'gmail' || s.id === 'chat'){ const go = el('button', 'btn sm primary', '画面を開く'); go.type = 'button'; go.onclick = () => { dlg.close(); O.ui.setView('mail'); if(O.mail) O.mail.open(); }; g.append(go); }
     if(s.status === 'soon') g.append(el('p', 'hint', '次の更新で対応します。Google側の設定（APIの有効化・権限）が必要なので、準備ができたらご案内します。'));
     c.append(g); box.append(c);
   });

@@ -769,7 +769,7 @@ const runTeam = (t, fromChat) => O.runTeam(t, !!fromChat);
 /* =========================================================
    メニュー（ハンバーガー）と画面切り替え
    ========================================================= */
-const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', log:'.log' };
+const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', mail:'.mail', log:'.log' };
 const HOME = ['brief', 'weather', 'feed', 'events', 'tasks', 'news', 'screen', 'photos', 'timers'];
 function setView(v){
   const single = v !== 'home' && TILE[v] ? v : null;
@@ -778,6 +778,7 @@ function setView(v){
   $$('.nav-item').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
   store.set('view', single || 'home'); window.scrollTo({ top:0 });
   if(single === 'history') O.hist.render();
+  if(single === 'mail') O.mail.open();
 }
 const drawer = $('#drawer'), scrim = $('#scrim'), burger = $('#burger');
 function toggleDrawer(open){

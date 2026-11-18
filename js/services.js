@@ -99,6 +99,8 @@ O.aiGenerate = async function(model, o){
 };
 
 /* ---------- Google token ---------- */
+O.EXT_SCOPES = { gmail:['https://www.googleapis.com/auth/gmail.readonly'], chat:['https://www.googleapis.com/auth/chat.messages.readonly', 'https://www.googleapis.com/auth/chat.spaces.readonly'] };
+O.scopes = () => O.SCOPES.concat(...Object.keys(O.cfg.ext).filter(k => O.cfg.ext[k]).map(k => O.EXT_SCOPES[k]));
 O.SCOPES = [
   'https://www.googleapis.com/auth/calendar.events',
   'https://www.googleapis.com/auth/photospicker.mediaitems.readonly',
@@ -152,7 +154,7 @@ O.signIn = async function(){
 O.connectGoogle = async function(){
   if(!O.fbReady || !O.user) throw new Error('先にGoogleでログインしてください');
   const p = new firebase.auth.GoogleAuthProvider();
-  O.SCOPES.forEach(s => p.addScope(s));
+  O.scopes().forEach(s => p.addScope(s));
   const res = await O.user.reauthenticateWithPopup(p);
   const cred = res.credential;
   if(!(cred && cred.accessToken)) throw new Error('アクセス権のトークンを受け取れませんでした');
@@ -172,7 +174,7 @@ O.addAccount = async function(){
   let app; try{ app = firebase.app('extra'); }catch(e){ app = firebase.initializeApp(conf, 'extra'); }
   const auth = app.auth();
   const p = new firebase.auth.GoogleAuthProvider();
-  O.SCOPES.forEach(sc => p.addScope(sc));
+  O.scopes().forEach(sc => p.addScope(sc));
   p.setCustomParameters({ prompt:'select_account' });
   const res = await auth.signInWithPopup(p);
   const u = res.user, tok = res.credential && res.credential.accessToken;

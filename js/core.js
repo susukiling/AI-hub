@@ -34,6 +34,7 @@ O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
 O.cfg.models = Object.assign({}, defaults.models, O.cfg.models || {});
 O.cfg.share = Object.assign({}, defaults.share, O.cfg.share || {});
+O.cfg.ext = Object.assign({ gmail:false, chat:false }, O.cfg.ext || {});   // 読み取り専用の追加権限。使うと決めたときだけ許可を求める
 // 以前に保存された古いGeminiのモデル名（2.0/2.5系は終了）は、新しい既定に自動で置き換える
 if(/^gemini-2\.[05]/.test(O.cfg.models.gemini || '')) O.cfg.models.gemini = defaults.models.gemini;
 // Groqで終了したLlamaは、後継の既定に置き換える（無料・開発者アカウントは2026/8/16に利用不可）
