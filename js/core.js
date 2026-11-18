@@ -240,6 +240,7 @@ O.demoText = function(want, o){
       return O.demoJarvis ? O.demoJarvis(o.user || '') : JSON.stringify({ reply:'いまはデモモードです。', actions:[] });
     case 'answer':
       return `【デモ回答 / ${O.AGENTS[want].name}】\n課題「${u}」について:\n・まず目的と期限を決める\n・小さく試して、結果を見て直す\n・判断に使う数字を記録しておく`;
+    case 'web': return '（デモ表示）ネットの検索には、Geminiが使える状態（Googleログイン、またはGeminiのキー）が必要です。';
     case 'critique':
       return JSON.stringify({
         issues:[{ target:o.peer || 'Gemini', point:'デモ表示です。実際のモデルなら、ここに具体的な誤りの指摘が入ります。' }],
