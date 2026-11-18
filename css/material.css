@@ -3,7 +3,7 @@
 :root{
   --p:#a8c7fa; --on-p:#062e6f; --p-cont:rgba(168,199,250,.16); --on-p-cont:#d3e3fd;
   --s:#5eead4;
-  --surface:rgba(24,31,47,.66); --surface-hi:rgba(34,43,63,.82); --surface-var:rgba(255,255,255,.06);
+  --surface:rgba(24,31,47,.66); --surface-hi:rgba(34,43,63,.82); --surface-var:rgba(255,255,255,.08);
   --outline:rgba(255,255,255,.34); --outline-var:rgba(255,255,255,.12);
   --r-s:12px; --r-m:16px; --r-l:28px;
   --e1:0 1px 2px rgba(0,0,0,.4),0 1px 3px 1px rgba(0,0,0,.2);
@@ -11,13 +11,13 @@
   --nav-h:80px;
 }
 body{font-size:15px;line-height:1.65}
-.aurora i{opacity:.34}
-.aurora::after{opacity:.7}
 
 /* ---------- 面（ガラスは残し、色と形をMaterial風に） ---------- */
-.glass{padding:20px;border-radius:var(--r-l);background:var(--surface);border:1px solid var(--outline-var);
-  backdrop-filter:blur(20px) saturate(150%);-webkit-backdrop-filter:blur(20px) saturate(150%);box-shadow:var(--e1)}
-.glass::before{display:none}
+.glass{padding:20px;border-radius:var(--r-l);
+  background:linear-gradient(150deg,rgba(255,255,255,.13),rgba(255,255,255,.04));
+  border:1px solid rgba(255,255,255,.18);
+  backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%);
+  box-shadow:inset 0 1px 0 rgba(255,255,255,.26),inset 0 0 0 1px rgba(255,255,255,.02),0 28px 60px -24px rgba(0,0,0,.6)}
 .tile-h{margin-bottom:12px;min-height:36px}
 .tile-h h2{font:500 18px/1.3 var(--font-body);letter-spacing:0;text-transform:none;color:var(--fg)}
 .tile-h .meta{font:400 12px var(--font-body);color:var(--muted)}
@@ -79,7 +79,8 @@ textarea.field{min-height:64px}
 .hist-item[aria-current=true]{background:var(--p-cont)}
 
 /* ---------- ダイアログ ---------- */
-dialog{border-radius:var(--r-l);background:rgba(28,34,50,.97);border:0;padding:24px;box-shadow:var(--e3);backdrop-filter:none}
+dialog{border-radius:var(--r-l);background:linear-gradient(150deg,rgba(255,255,255,.14),rgba(255,255,255,.05)),rgba(14,20,36,.7);border:1px solid rgba(255,255,255,.18);padding:24px;
+  backdrop-filter:blur(34px) saturate(180%);-webkit-backdrop-filter:blur(34px) saturate(180%);box-shadow:inset 0 1px 0 rgba(255,255,255,.22),0 40px 90px rgba(0,0,0,.6)}
 dialog h3{font:400 24px/1.3 var(--font-body)}
 dialog h5{font:500 13px var(--font-body);letter-spacing:.02em;text-transform:none;color:var(--p);margin-top:24px}
 dialog label{font:500 13px var(--font-body);letter-spacing:0}
@@ -87,11 +88,11 @@ dialog label{font:500 13px var(--font-body);letter-spacing:0}
 .dlg-actions .btn.primary,.dlg-actions .btn.danger{background:var(--p);color:var(--on-p);border:0}
 .dlg-actions .btn.danger{background:var(--err);color:#3a0000}
 .toast{border-radius:8px;background:#e3e8f3;color:#1a1f2b;border:0;box-shadow:var(--e3);font-weight:500}
-.plus-menu{border-radius:var(--r-m);background:var(--surface-hi);border:0;box-shadow:var(--e3);padding:8px}
+.plus-menu{border-radius:var(--r-m);background:linear-gradient(150deg,rgba(255,255,255,.14),rgba(255,255,255,.05)),rgba(14,20,36,.78);border:1px solid rgba(255,255,255,.18);backdrop-filter:blur(26px) saturate(180%);-webkit-backdrop-filter:blur(26px) saturate(180%);box-shadow:var(--e3);padding:8px}
 .plus-menu button{min-height:48px;border-radius:12px;position:relative;overflow:hidden}
 
 /* ---------- ナビ（スマホ=下のバー / PC=左のレール） ---------- */
-.navbar{position:fixed;z-index:25;display:flex;background:var(--surface-hi);backdrop-filter:blur(22px) saturate(150%);-webkit-backdrop-filter:blur(22px) saturate(150%)}
+.navbar{position:fixed;z-index:25;display:flex;background:linear-gradient(150deg,rgba(255,255,255,.12),rgba(255,255,255,.04)),rgba(10,16,30,.5);backdrop-filter:blur(28px) saturate(180%);-webkit-backdrop-filter:blur(28px) saturate(180%)}
 .nb-item{position:relative;flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border:0;background:none;color:var(--muted);cursor:pointer;font:500 12px var(--font-body);padding:0}
 .nb-ico{position:relative;overflow:hidden;display:grid;place-items:center;width:64px;height:32px;border-radius:16px;transition:background .25s}
 .nb-ico svg{width:24px;height:24px;fill:currentColor}
@@ -179,7 +180,8 @@ dialog label{font:500 13px var(--font-body);letter-spacing:0}
 .ask .btn.primary{flex:none;min-width:64px}
 
 /* ドロワー（その他） */
-.drawer{background:rgba(24,30,46,.96);border-right:0;border-radius:0 var(--r-l) var(--r-l) 0;box-shadow:var(--e3);backdrop-filter:none}
+.drawer{background:linear-gradient(160deg,rgba(255,255,255,.14),rgba(255,255,255,.04)),rgba(10,16,30,.62);border-right:1px solid rgba(255,255,255,.18);border-radius:0 var(--r-l) var(--r-l) 0;
+  backdrop-filter:blur(30px) saturate(180%);-webkit-backdrop-filter:blur(30px) saturate(180%);box-shadow:inset -1px 0 0 rgba(255,255,255,.1),30px 0 80px rgba(0,0,0,.5)}
 .nav-item{min-height:56px;border-radius:28px;padding:8px 20px;justify-content:center;position:relative;overflow:hidden}
 .nav-item b{font:500 15px var(--font-body)}
 .nav-item small{font-size:12px}
@@ -191,3 +193,8 @@ dialog label{font:500 13px var(--font-body);letter-spacing:0}
   #jarvisMeta{display:none}
   .jarvis .tile-h{flex-wrap:wrap}
 }
+
+/* 中の小さな面も、うっすら縁を付けてガラスらしく */
+.card,.ev,.task,.timer-item,.hist-item,.msg.ai,.step+.step{box-shadow:inset 0 1px 0 rgba(255,255,255,.1)}
+.card,.ev,.task,.timer-item,.hist-item,.msg.ai{border:1px solid rgba(255,255,255,.1)}
+.field{background:rgba(0,0,0,.18)}
