@@ -196,8 +196,15 @@
               <button type="button" role="radio" aria-checked="true" data-mode="events">予定を作る</button>
               <button type="button" role="radio" aria-checked="false" data-mode="tasks">タスクを作る</button>
               <button type="button" role="radio" aria-checked="false" data-mode="quiz">問題を作る（HTML）</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="screentime">スクリーンタイムを解析</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="summary">説明・要約</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="table">表をCSVに</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="receipt">レシートを読む</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="translate">翻訳</button>
               <button type="button" role="radio" aria-checked="false" data-mode="text">文字を書き起こす</button>
+              <button type="button" role="radio" aria-checked="false" data-mode="ask">自由に質問</button>
             </div>
+            <div id="visAskRow" hidden><input class="field" id="visAsk" placeholder="この画像について聞きたいこと" aria-label="画像への質問"></div>
             <div class="vis-btns">
               <button class="btn sm" id="visCamBtn" type="button">カメラで撮る</button>
               <button class="btn primary" id="visRun" type="button">読み取る</button>

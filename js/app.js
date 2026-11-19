@@ -464,6 +464,12 @@ function renderScreen(){
     c.append(i, document.createTextNode(d.wd)); bars.append(c);
   });
   b.append(bars);
+  const ak = Object.keys(O.usage).sort().reverse().find(d => O.usage[d].apps && O.usage[d].apps.length);
+  if(ak){
+    const ap = O.usage[ak].apps.slice(0, 5), mx = Math.max(...ap.map(a => a.minutes), 1), box = el('div', 'st-apps');
+    ap.forEach(a => { const r = el('div', 'st-app'), bar = el('div', 'st-bar'), i = el('i'); i.style.width = Math.max(3, a.minutes / mx * 100) + '%'; bar.append(i); r.append(el('span', '', a.name), bar, el('b', '', O.fmtMin(a.minutes))); box.append(r); });
+    b.append(el('p', 'note-s', `アプリ別（${ak}・画像から読み取り）`), box);
+  }
   const f = el('form', 'st-form'); f.autocomplete = 'off';
   const inp = el('input', 'field'); inp.id = 'dvInput'; inp.type = 'number'; inp.min = '0'; inp.max = '1440'; inp.placeholder = '端末の合計(分)'; inp.setAttribute('aria-label', '端末の今日の合計（分）');
   if(u.device != null) inp.value = u.device;
@@ -474,7 +480,7 @@ function renderScreen(){
     if(!(v >= 0 && v <= 1440)){ toast('0〜1440の分で入力してください'); return; }
     O.setDeviceMinutes(v); renderScreen(); toast('保存しました');
   };
-  b.append(f, el('p', 'note-s', 'ブラウザからは端末全体の利用時間を読めません。iPhoneやAndroidの設定にある「今日の合計」を入力してください。自動取得はネイティブアプリ版で対応します。'));
+  b.append(f, el('p', 'note-s', 'ブラウザからは端末全体の利用時間を読めません。数字を入力するか、「画像読み取り」でスクリーンタイムの画面を読み込ませてください。'));
 }
 O.onUsage = () => { if(document.activeElement && document.activeElement.id === 'dvInput') return; renderScreen(); };
 
@@ -846,7 +852,7 @@ $('#searchBtn').addEventListener('click', e => {
 });
 $('#newChatBtn').addEventListener('click', newChat);
 $('#histBtn').addEventListener('click', () => setView('history'));
-O.ui = { updateAccount, addMsg, speak, toggleSpeak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
+O.ui = { renderScreen, updateAccount, addMsg, speak, toggleSpeak, setView, addTask, sendChat, resumeChat, loadEvents, doConnect, doLogin, toggleDrawer, openConnectors:() => O.connectors.open() };
 
 /* =========================================================
    設定

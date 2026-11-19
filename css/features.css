@@ -152,3 +152,16 @@
 .mail-answer{padding:12px 14px;border-radius:16px;background:rgba(138,180,255,.1);border:1px solid rgba(138,180,255,.3)}
 .mail-ans{margin:6px 0 0;white-space:pre-wrap;line-height:1.7;font-size:13.5px}
 #mailTabs button[aria-selected=true]{background:linear-gradient(120deg,rgba(94,234,212,.3),rgba(138,180,255,.3));border-color:var(--mint)}
+
+/* Vision: 追加モード */
+.vtable{overflow:auto;max-height:320px;border-radius:14px;border:1px solid var(--edge)}
+.vtable table{border-collapse:collapse;width:100%;font-size:13px}
+.vtable th,.vtable td{padding:7px 12px;text-align:left;border-bottom:1px solid rgba(255,255,255,.08);white-space:nowrap}
+.vtable th{background:rgba(255,255,255,.08);position:sticky;top:0}
+.st-big{font:600 40px/1.2 var(--font-display)}
+.st-apps{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.st-app{display:grid;grid-template-columns:minmax(70px,120px) 1fr auto;gap:10px;align-items:center;font-size:13px}
+.st-bar{height:10px;border-radius:5px;background:rgba(255,255,255,.1);overflow:hidden}
+.st-bar i{display:block;height:100%;border-radius:5px;background:var(--p)}
+.st-adv{margin:6px 0;padding-left:18px;line-height:1.8;font-size:14px}
+#visAskRow{width:100%}
