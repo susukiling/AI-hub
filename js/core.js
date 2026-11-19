@@ -258,7 +258,11 @@ O.callAI = async function(want, o){
     return { agent:want, text:O.demoText(want, o), demo:true, sources:[], suggest:'' };
   }
   const a = O.AGENTS[id], model = O.cfg.models[id];
+  const t0 = performance.now();
   const r = a.provider === 'groq' ? await callGroq(model, o) : await callGeminiWithFallback(model, o);
+  // 何で・どのくらいかかったかを記録（遅い原因を探すため）
+  const via = a.provider === 'groq' ? (O.ownKey('groq') ? '自分のキー' : 'プロキシ') : (O.ownKey('gemini') ? '自分のキー' : O.aiReady ? 'AI Logic' : 'プロキシ');
+  O.log('sys', `${a.name}（${O.cfg.models[id]}）・${via}・${((performance.now() - t0) / 1000).toFixed(1)}秒${o.tag ? '・' + o.tag : ''}`);
   return { agent:id, text:r.text, demo:false, sources:r.sources, suggest:r.suggest || '' };
 };
 
