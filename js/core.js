@@ -28,7 +28,7 @@ const defaults = {
   cityKey:'tokyo', geo:null,
   // AIの「状況まとめ」に含める情報（コネクタ画面で切り替える）
   share:{ events:true, tasks:true, weather:true, news:true, screen:true, profile:true, drive:true, write:true },
-  models:{ gemini:'gemini-3.6-flash', llama:'qwen/qwen3.8-27b', gpt:'openai/gpt-oss-120b' }
+  models:{ gemini:'gemini-3.5-flash-lite', llama:'qwen/qwen3.8-27b', gpt:'openai/gpt-oss-120b' }
 };
 O.defaults = defaults;
 O.cfg = Object.assign({}, defaults, O.store.get('cfg', {}));
@@ -37,6 +37,11 @@ O.cfg.share = Object.assign({}, defaults.share, O.cfg.share || {});
 O.cfg.ext = Object.assign({ gmail:false, chat:false }, O.cfg.ext || {});   // 読み取り専用の追加権限。使うと決めたときだけ許可を求める
 // 以前に保存された古いGeminiのモデル名（2.0/2.5系は終了）は、新しい既定に自動で置き換える
 if(/^gemini-2\.[05]/.test(O.cfg.models.gemini || '')) O.cfg.models.gemini = defaults.models.gemini;
+// 速さ優先: 既定を軽いモデル（flash-lite）に変更。以前の既定・自動切り替えで入った名前だけ、1回だけ置き換える（自分で選んだ別の名前は触らない）
+if(!O.store.get('liteMig', false)){
+  if(['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash'].includes(O.cfg.models.gemini)) O.cfg.models.gemini = defaults.models.gemini;
+  O.store.set('liteMig', true);
+}
 // Groqで終了したLlamaは、後継の既定に置き換える（無料・開発者アカウントは2026/8/16に利用不可）
 if(/^(meta-llama\/)?llama-|qwen3\.6/.test(O.cfg.models.llama || '')) O.cfg.models.llama = defaults.models.llama;
 delete O.cfg.fbConfig;   // firebaseConfigは js/firebase-config.js だけに書く（以前の設定画面の値は使わない）
@@ -210,7 +215,7 @@ async function callGemini(model, o){
   return { text, sources, suggest };
 }
 /* Geminiのモデル名が終了・未提供（404など）のときは、次の候補を試し、通ったものを設定に覚える */
-O.GEMINI_FALLBACK = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash', 'gemini-3.5-flash-lite'];
+O.GEMINI_FALLBACK = ['gemini-3.5-flash-lite', 'gemini-3.5-flash', 'gemini-3.6-flash', 'gemini-3.8-flash'];
 async function callGeminiWithFallback(model, o){
   const cands = [model, ...O.GEMINI_FALLBACK.filter(m => m !== model)].slice(0, 4);
   const QUOTA = /429|quota|exceeded|resource.?exhausted/i;
