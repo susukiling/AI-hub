@@ -178,7 +178,7 @@ async function callGroqOnce(model, o){
 /* 考える量（thinkingBudget）: 速さ優先の用途は0、じっくり答える用途は少しだけ。モデルが受け付けなければ、指定なしに切り替えて覚える */
 O.noThink = O.store.get('noThink', false);
 const DEEP_TAGS = ['answer', 'critique', 'synth', 'mailans', 'chatans', 'vision', 'web'];
-O.thinkBudget = o => O.noThink ? null : (o.think != null ? o.think : (DEEP_TAGS.includes(o.tag) ? 512 : 0));
+O.thinkBudget = o => (O.noThink || o.noThinkOnce) ? null : (o.think != null ? o.think : (DEEP_TAGS.includes(o.tag) ? 512 : 0));
 const SLOW = /abort|timeout|timed out|deadline|タイムアウト/i;
 O.geminiTimeout = o => (o.search || (o.messages || []).some(m => m.media && m.media.length)) ? 60000 : 30000;
 async function callGemini(model, o){
@@ -223,10 +223,12 @@ async function callGeminiWithFallback(model, o){
   const once = async m => {
     try{ return await callGemini(m, o); }
     catch(e){
-      if(!O.noThink && /thinking/i.test(e.message)){
+      if(!O.noThink && !o.noThinkOnce && /thinking|400|invalid.?argument/i.test(e.message)){
+        // 考える量の指定が原因の400かもしれないので、指定なしで1回だけ再試行（通ったら以後も指定なし）
+        const r = await callGemini(m, Object.assign({}, o, { noThinkOnce:true }));
         O.noThink = true; O.store.set('noThink', true);
         O.log('sys', 'このモデルは考える量の指定を受け付けないため、指定なしで動かします');
-        return callGemini(m, o);
+        return r;
       }
       throw e;
     }
