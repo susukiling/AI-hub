@@ -170,6 +170,12 @@ async function callGroqOnce(model, o){
   if(!clean) throw new Error('Groq: 空の応答');
   return { text:clean, sources:[] };
 }
+/* 考える量（thinkingBudget）: 速さ優先の用途は0、じっくり答える用途は少しだけ。モデルが受け付けなければ、指定なしに切り替えて覚える */
+O.noThink = O.store.get('noThink', false);
+const DEEP_TAGS = ['answer', 'critique', 'synth', 'mailans', 'chatans', 'vision', 'web'];
+O.thinkBudget = o => O.noThink ? null : (o.think != null ? o.think : (DEEP_TAGS.includes(o.tag) ? 512 : 0));
+const SLOW = /abort|timeout|timed out|deadline|タイムアウト/i;
+O.geminiTimeout = o => (o.search || (o.messages || []).some(m => m.media && m.media.length)) ? 60000 : 30000;
 async function callGemini(model, o){
   // 呼び出しの優先順: 自分のキー → Firebase AI Logic（鍵なし） → 共有プロキシ
   if(!O.ownKey('gemini') && O.aiReady) return O.aiGenerate(model, o);
@@ -177,13 +183,21 @@ async function callGemini(model, o){
     contents:O.toGeminiContents(o.messages),
     generationConfig:Object.assign({ temperature:o.temperature ?? 0.7 }, o.maxTokens ? { maxOutputTokens:o.maxTokens } : {})
   };
+  const tb = O.thinkBudget(o); if(tb != null) body.generationConfig.thinkingConfig = { thinkingBudget:tb };
   if(o.system) body.systemInstruction = { parts:[{ text:o.system }] };
   if(o.search) body.tools = [{ google_search:{} }];            // 検索連携とJSONモードは併用しない
   else if(o.json) body.generationConfig.responseMimeType = 'application/json';
-  const r = O.ownKey('gemini')
+  const ctl = new AbortController(), timer = setTimeout(() => ctl.abort(), O.geminiTimeout(o));
+  let r;
+  try{
+    r = O.ownKey('gemini')
     ? await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(model)}:generateContent?key=${encodeURIComponent(O.cfg.geminiKey.trim())}`,
-        { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body) })
+        { method:'POST', headers:{ 'Content-Type':'application/json' }, body:JSON.stringify(body), signal:ctl.signal })
     : await proxyFetch('/v1/gemini', { model, body });
+  }catch(e){
+    if(e.name === 'AbortError') throw new Error('Gemini: 応答がありません（タイムアウト）');
+    throw e;
+  }finally{ clearTimeout(timer); }
   if(!r.ok) throw new Error('Gemini: ' + await errText(r));
   const j = await r.json();
   const cand = j.candidates && j.candidates[0];
@@ -200,10 +214,21 @@ O.GEMINI_FALLBACK = ['gemini-3.8-flash', 'gemini-3.6-flash', 'gemini-3.5-flash',
 async function callGeminiWithFallback(model, o){
   const cands = [model, ...O.GEMINI_FALLBACK.filter(m => m !== model)].slice(0, 4);
   const QUOTA = /429|quota|exceeded|resource.?exhausted/i;
-  let lastErr, quotaHit = false;
+  let lastErr, quotaHit = false, slow = 0;
+  const once = async m => {
+    try{ return await callGemini(m, o); }
+    catch(e){
+      if(!O.noThink && /thinking/i.test(e.message)){
+        O.noThink = true; O.store.set('noThink', true);
+        O.log('sys', 'このモデルは考える量の指定を受け付けないため、指定なしで動かします');
+        return callGemini(m, o);
+      }
+      throw e;
+    }
+  };
   for(const m of cands){
     try{
-      const r = await callGemini(m, o);
+      const r = await once(m);
       if(m !== model && !quotaHit){
         O.cfg.models.gemini = m; O.saveCfg();
         O.log('sys', `Geminiのモデルを ${model} から ${m} に切り替えました`);
@@ -214,6 +239,10 @@ async function callGeminiWithFallback(model, o){
         lastErr = e; quotaHit = true; continue;
       }
       lastErr = e;
+      if(SLOW.test(e.message)){            // 応答が遅いときは、軽いモデルを1回だけ試す（待ち続けない）
+        if(++slow >= 2) throw new Error('Geminiの応答が遅れています。しばらくしてからもう一度試すか、Groq（Qwen/GPT-OSS）を使ってください');
+        O.log('sys', `${m} の応答が遅いため、別のモデルを試します`); continue;
+      }
       if(!/404|no longer available|not found|not supported|is not available/i.test(e.message)) throw e;
     }
   }

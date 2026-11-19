@@ -79,11 +79,12 @@ O.initAI = async function(){
 O.aiGenerate = async function(model, o){
   const { M, inst } = O._ai;
   const gc = { temperature:o.temperature ?? 0.7 }; if(o.maxTokens) gc.maxOutputTokens = o.maxTokens;
+  const tb = O.thinkBudget(o); if(tb != null) gc.thinkingConfig = { thinkingBudget:tb };
   const params = { model, generationConfig:gc };
   if(o.system) params.systemInstruction = o.system;
   if(o.search) params.tools = [{ googleSearch:{} }];            // 検索連携とJSONモードは併用しない
   else if(o.json) gc.responseMimeType = 'application/json';
-  const m = M.getGenerativeModel(inst, params);
+  const m = M.getGenerativeModel(inst, params, { timeout:O.geminiTimeout(o) });
   let res;
   try{
     res = await m.generateContent({ contents:O.toGeminiContents(o.messages) });
