@@ -144,13 +144,32 @@ function listenOnce(){
     $('#chatInput').value = t; $('#briefInput').value = t;
     if(e.results[e.results.length - 1].isFinal){ $('#chatInput').value = ''; $('#briefInput').value = ''; handleVoice(t); }
   };
-  rec.onerror = e => { if(e.error !== 'no-speech' && e.error !== 'aborted') toast('音声入力エラー: ' + e.error); };
+  rec.onerror = e => { if(e.error === 'not-allowed' || e.error === 'service-not-allowed'){ micOK = false; toast('マイクが許可されていません。アドレスバーのアイコンからマイクを許可してください', 9000); } else if(e.error !== 'no-speech' && e.error !== 'aborted') toast('音声入力エラー: ' + e.error); };
   rec.onend = () => { listening = false; setMicUI(false); if($('#orb').dataset.state === 'listening') setOrb('idle'); startWake(); };
   try{ rec.start(); }catch(e){ listening = false; setMicUI(false); }
 }
-$$('.mic').forEach(m => m.addEventListener('click', () => {
+/* マイクの許可: 押した瞬間にブラウザの許可ポップアップを出す（許可済みなら出ない）。拒否されたら直し方を案内 */
+let micOK = false;
+async function ensureMic(){
+  if(micOK) return true;
+  if(!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia){ toast('このブラウザではマイクを使えません（HTTPSのページで、ChromeかEdgeかSafariで開いてください）'); return false; }
+  try{
+    const st = await navigator.mediaDevices.getUserMedia({ audio:true });
+    st.getTracks().forEach(t => t.stop());
+    micOK = true; return true;
+  }catch(e){
+    const n = e && e.name;
+    if(n === 'NotAllowedError' || n === 'SecurityError') toast('マイクが許可されていません。アドレスバーの鍵（またはマイク）のアイコンから「マイク」を許可して、ページを再読み込みしてください', 9000);
+    else if(n === 'NotFoundError') toast('マイクが見つかりません。接続を確認してください');
+    else toast('マイクを開始できませんでした: ' + (n || e.message));
+    return false;
+  }
+}
+$$('.mic').forEach(m => m.addEventListener('click', async () => {
   if(!SR){ toast('このブラウザは音声入力に未対応です（Chrome か Edge で開いてください）'); return; }
   if(listening && rec){ rec.stop(); return; }
+  stopWake();
+  if(!await ensureMic()){ startWake(); return; }
   listenOnce();
 }));
 
@@ -959,7 +978,7 @@ $('#settingsForm').addEventListener('submit', async e => {
     try{ c.geo = await O.geoLocate(); }catch(err){ toast(err.message); c.cityKey = 'tokyo'; }
   }
   O.saveCfg(); dlg.close(); refreshPills(); pickBrain(); renderSetup(); log('sys', '設定を保存');
-  if(c.wake) startWake(); else stopWake();
+  if(c.wake) ensureMic().then(ok => ok && startWake()); else stopWake();
   if(c.recaptchaKey !== oldRk){ toast('reCAPTCHAの設定を反映するため再読み込みします'); setTimeout(() => location.reload(), 1100); return; }
   if(c.cityKey !== oldCity || c.cityKey === 'geo') loadWeather();
   if(!hadKey && O.anyKey()){ toast('保存しました。実際のモデルで動きます'); await loadNews(true); loadFeed(); }
