@@ -693,7 +693,7 @@ async function webAnswer(messages){
     log(r.agent, 'ネット検索: ' + q.slice(0, 50));
     addMsg('ai', text, { agent:r.agent, demo:r.demo, sources, chips:['ネット検索'] });
     speak(text.slice(0, 200));
-  }catch(e){ addMsg('err', '検索できませんでした: ' + e.message); setOrb('idle'); }
+  }catch(e){ addMsg('err', '検索できませんでした。' + O.friendly(e)); setOrb('idle'); }
 }
 async function sendChat(text){
   const att = O.attach.take();
@@ -740,7 +740,7 @@ async function sendChat(text){
     runActions(acts); speak(out.reply);
   }catch(e){
     delete um.media;
-    addMsg('err', e.message); log('sys', 'エラー: ' + e.message); setOrb('idle');
+    addMsg('err', O.friendly(e)); log('sys', 'エラー: ' + e.message); setOrb('idle');
   }
 }
 function runActions(list){
@@ -833,6 +833,7 @@ document.addEventListener('pointerdown', e => {
 }, { passive:true });
 
 /* はじめかた: いまどこまで進んでいるか、次に何を押せばいいかを、順に並べる */
+let setupAll = false;
 function renderSetup(){
   const ol = $('#steps'); if(!ol) return;
   ol.textContent = '';
@@ -849,12 +850,16 @@ function renderSetup(){
   step(3, gem, 'AI（Gemini）', gem ? '使えます' : 'ログインすると、鍵なしで使えるようになります。', ['設定を開く', openSettings]);
   step(4, groq, 'Qwen・GPT-OSS（Groq）', groq ? '使えます' : '任意。なくても動きます（AIチームでは、Geminiが代役を務めます）。', ['キーを入れる', openSettings], true);
   step(5, !!(O.cfg.ext.gmail || O.cfg.ext.chat), 'メール・チャット（読み取り専用）', '任意。使いたいときだけ許可します。', ['開く', () => setView('mail')], true);
+  const first = ol.querySelector('.step:not(.ok):not(.opt)'); if(first) first.classList.add('cur');
+  ol.classList.toggle('compact', !setupAll && !!first);
+  const tg = $('#setupToggle'); tg.hidden = !first && !setupAll; tg.textContent = setupAll ? '閉じる' : '接続の一覧を見る';
   const need = [!!O.user, O.google.valid, gem].filter(x => !x).length;
   $('#setupMeta').textContent = need ? `あと${need}つ` : '準備できました';
   $('#setupCard').classList.toggle('complete', !need);
 }
 O.ui_renderSetup = renderSetup;
-$('#brain').addEventListener('change', () => { updateJarvisMeta(); toast('チャットのAI: ' + AGENTS[$('#brain').value].name); log('sys', '頭脳を切り替え: ' + AGENTS[$('#brain').value].name); });
+$('#setupToggle').addEventListener('click', () => { setupAll = !setupAll; renderSetup(); });
+$('#brain').addEventListener('change', () => { updateJarvisMeta(); syncBrainSeg(); toast('チャットのAI: ' + AGENTS[$('#brain').value].name); log('sys', '頭脳を切り替え: ' + AGENTS[$('#brain').value].name); });
 $('#userChip').addEventListener('click', () => toggleDrawer(true));
 $('#loginBtn').addEventListener('click', doLogin);
 $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); openSettings(); });
@@ -879,10 +884,17 @@ function refreshPills(){
   m.textContent = 'Gemini ' + st('gemini');
   $('#pillDemo').style.display = O.anyKey() ? 'none' : '';
 }
+function syncBrainSeg(){
+  const v = $('#brain').value;
+  document.querySelectorAll('#brainSeg button').forEach(b => b.setAttribute('aria-pressed', String(b.dataset.brain === v)));
+}
+document.querySelectorAll('#brainSeg button').forEach(b => b.addEventListener('click', () => {
+  $('#brain').value = b.dataset.brain; $('#brain').dispatchEvent(new Event('change'));
+}));
 function pickBrain(){
   const sel = $('#brain');
   if(O.hasKey('gemini')) sel.value = 'gemini'; else if(O.hasKey('groq')) sel.value = 'llama';
-  updateJarvisMeta();
+  updateJarvisMeta(); syncBrainSeg();
 }
 const dlg = $('#settings');
 function openSettings(){

@@ -182,7 +182,23 @@ function renderView(){
   });
   v.append(tr);
 }
-H.render = function(){ renderList(); renderView(); };
+function renderSide(){
+  const box = $('#chatSideList'); if(!box) return;
+  box.textContent = '';
+  const rows = convs.slice().sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 40);
+  if(!rows.length){ box.append(el('p', 'empty', 'まだ会話がありません')); return; }
+  rows.forEach(c => {
+    const b = el('button'); b.type = 'button';
+    b.append(el('b', '', c.title || '(無題)'), el('small', '', `${KIND[c.kind] || c.kind} ・ ${when(c.updatedAt)}`));
+    b.onclick = () => {
+      if(c.kind === 'jarvis' && O.ui) O.ui.resumeChat(c);
+      else { selected = c.id; if(O.ui) O.ui.setView('history'); renderList(); renderView(); }
+    };
+    box.append(b);
+  });
+}
+H.render = function(){ renderList(); renderView(); renderSide(); };
+const sa = $('#chatSideAll'); if(sa) sa.onclick = () => O.ui && O.ui.setView('history');
 $('#histSearch').addEventListener('input', e => { query = e.target.value; renderList(); renderView(); });
 H.render();
 })();

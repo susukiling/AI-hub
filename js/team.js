@@ -113,7 +113,7 @@ async function answer(s, task){
     log(r.agent, `${NAME(s.slot)}枠: 最初の回答`);
   }catch(e){
     s.failed = true; s.note = e.message;
-    setCard(s, 'error', '失敗', '失敗: ' + e.message);
+    setCard(s, 'error', '失敗', O.friendly(e));
     log('sys', `${NAME(s.slot)}枠が失敗: ${e.message}`);
   }
 }
@@ -196,8 +196,8 @@ async function runTeam(task, fromChat){
     }
     return ok.map(s => ({ slot:s.slot, agent:s.agent, text:s.current, name:names(s) }));
   }catch(e){
-    setPhase('失敗'); log('sys', 'チーム失敗: ' + e.message); toast('チームの実行に失敗しました: ' + e.message);
-    if(fromChat) O.ui.addMsg('err', 'チームの実行に失敗しました: ' + e.message);
+    setPhase('失敗'); log('sys', 'チーム失敗: ' + e.message); toast('チームの実行に失敗しました');
+    if(fromChat) O.ui.addMsg('err', 'チームの実行に失敗しました。' + O.friendly(e));
     return null;
   }finally{
     running = false; $('#teamRun').disabled = false;

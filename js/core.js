@@ -96,6 +96,22 @@ O.safeJSON = function(t){
   if(m){ try{ return JSON.parse(m[1]); }catch(e){} }
   return null;
 };
+/* ---------- エラーを、やさしい日本語と直し方に言い換える（元の文は「詳細」として残す） ---------- */
+O.friendly = function(raw){
+  const m = String((raw && raw.message) || raw || '');
+  const R = [
+    [/429|quota|exceeded|resource.?exhausted|rate.?limit/i, 'AIの使いすぎ（上限）です。', '少し待つか、設定でモデルを変える／別のAI（Qwen・GPT-OSS）に切り替えてください。'],
+    [/timeout|timed out|タイムアウト|遅れて/i, 'AIの返事が遅れています。', 'もう一度試すか、別のAIに切り替えてください。'],
+    [/400|invalid.?argument/i, 'AIにうまく伝わりませんでした（設定の不一致）。', 'モデル名が合っているか設定で確認し、もう一度送ってください。'],
+    [/404|not.?found|does not exist/i, 'このモデル名は、いま使えません。', '設定のモデル名を候補から選び直してください。'],
+    [/401|403|permission|unauthori[sz]ed|forbidden|API.?key/i, '権限またはキーが足りません。', 'ログインし直すか、設定でキーと権限を確認してください。'],
+    [/network|failed to fetch|load failed|offline/i, '通信できませんでした。', 'ネットワークを確認して、もう一度試してください。'],
+    [/5\d\d|unavailable|overloaded|internal/i, 'AIのサーバーが混み合っています。', '少し待ってから、もう一度試してください。'],
+  ];
+  const hit = R.find(r => r[0].test(m));
+  if(!hit) return m;
+  return hit[1] + hit[2] + '\n（詳細: ' + m.replace(/\s+/g, ' ').slice(0, 140) + '）';
+};
 /* ---------- toast / log ---------- */
 O.toast = function(msg, ms){
   const t = $('#toast'); t.textContent = msg; t.classList.add('show');

@@ -91,7 +91,7 @@ async function runGmail(){
       };
       out.append(b);
     });
-  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', e.message)); }
+  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', O.friendly(e))); }
 }
 async function askGmail(question){
   const today = new Date().toLocaleDateString('sv-SE', { timeZone:'Asia/Tokyo' });
@@ -117,7 +117,7 @@ async function loadSpaces(){
     spaces = r.spaces || [];
     if(!spaces.length){ sel.append(Object.assign(el('option', '', 'スペースがありません'), { value:'' })); return; }
     spaces.forEach(s => sel.append(Object.assign(el('option', '', s.displayName || (s.spaceType === 'DIRECT_MESSAGE' ? '（ダイレクトメッセージ）' : s.name)), { value:s.name })));
-  }catch(e){ sel.append(Object.assign(el('option', '', 'スペースを読み込めません'), { value:'' })); $('#chatList').textContent = ''; $('#chatList').append(el('p', 'err-text', e.message)); }
+  }catch(e){ sel.append(Object.assign(el('option', '', 'スペースを読み込めません'), { value:'' })); $('#chatList').textContent = ''; $('#chatList').append(el('p', 'err-text', O.friendly(e))); }
 }
 async function chatMessages(space, pages){
   let all = [], tok = '';
@@ -140,7 +140,7 @@ async function runChat(){
       const d = el('div', 'msg ai'); d.append(el('span', 'who', `${(m.sender && (m.sender.displayName || m.sender.name)) || ''} ・ ${fmt(m.createTime)}`), document.createTextNode(clip(m.text, 1500)));
       out.append(d);
     });
-  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', e.message)); }
+  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', O.friendly(e))); }
 }
 async function askChat(question){
   const space = $('#chatSpace').value; if(!space) throw new Error('スペースを選んでください');
@@ -175,7 +175,7 @@ async function ask(){
     out.textContent = '';
     out.append(el('small', '', tab === 'gmail' ? `検索式: ${r.q} ・ ${r.count}件のメールを読みました` : `最近の${r.count}件のメッセージを読みました`), el('p', 'mail-ans', r.text));
     O.hist.record('mail', clip(q, 30), [{ role:'user', text:q }, { role:'ai', agent:'gemini', text:r.text }]);
-  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', '失敗しました: ' + e.message)); }
+  }catch(e){ out.textContent = ''; out.append(el('p', 'err-text', '失敗しました。' + O.friendly(e))); }
   busy = false;
 }
 
