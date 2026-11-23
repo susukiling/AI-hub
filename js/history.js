@@ -4,7 +4,7 @@
 const O = window.O;
 const { $, store, pad } = O;
 const MAX_CONVS = 60, MAX_MSGS = 200;
-const KIND = { jarvis:'Jarvis', team:'AI Team', vision:'画像', mail:'メール・チャット' };
+const KIND = { jarvis:'チャット', team:'AI Team', vision:'画像', mail:'メール・チャット' };
 
 let convs = store.get('convs', []);
 const dirty = new Set();
@@ -124,7 +124,7 @@ function renderList(){
   const rows = H.search(query);
   $('#histMeta').textContent = query ? `${rows.length} / ${convs.length} 件` : `${convs.length} 件`;
   if(!rows.length){
-    box.append(el('p', 'empty', query ? '見つかりませんでした。別の言葉で試してください。' : 'まだ会話がありません。JarvisやAI Teamで話すと、ここに残ります。'));
+    box.append(el('p', 'empty', query ? '見つかりませんでした。別の言葉で試してください。' : 'まだ会話がありません。チャットやAI Teamで話すと、ここに残ります。'));
     return;
   }
   rows.forEach(({ c, snip }) => {

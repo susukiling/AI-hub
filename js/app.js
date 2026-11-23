@@ -75,7 +75,7 @@ function actionLabel(a){
 const ORB_LABEL = { idle:'待機中', listening:'聞いています', thinking:'考え中', speaking:'話しています' };
 function updateJarvisMeta(){
   const s = $('#orb').dataset.state;
-  $('#jarvisMeta').textContent = `頭脳 ${AGENTS[$('#brain').value].name} ・ ${ORB_LABEL[s] || ''}`;
+  $('#jarvisMeta').textContent = `AI ${AGENTS[$('#brain').value].name} ・ ${ORB_LABEL[s] || ''}`;
 }
 function setOrb(s){ $('#orb').dataset.state = s; $('#orbState').textContent = ORB_LABEL[s] || ''; updateJarvisMeta(); }
 /* 読み上げ（ブラウザの音声。声・速さ・高さは設定で変えられる）。force=trueなら、設定のオン/オフに関わらず読む */
@@ -166,7 +166,7 @@ function addTask(text){
 }
 function renderTasks(){
   const ul = $('#taskList'); ul.textContent = '';
-  if(!tasks.length) ul.append(el('li', 'empty', 'タスクはありません。下の欄かJarvisに頼んで追加できます。'));
+  if(!tasks.length) ul.append(el('li', 'empty', 'タスクはありません。下の欄かチャットで頼んで追加できます。'));
   tasks.forEach(t => {
     const li = el('li', 'task' + (t.done ? ' done' : ''));
     const cb = el('input'); cb.type = 'checkbox'; cb.checked = t.done; cb.setAttribute('aria-label', '完了にする');
@@ -189,7 +189,7 @@ function addTimer(sec, label){
 function renderTimers(){
   const ul = $('#timerList'); ul.textContent = '';
   $('#timerCount').textContent = timers.length;
-  if(!timers.length){ ul.append(el('li', 'empty', '動いているタイマーはありません。下のボタン、またはJarvisに頼んでください。')); return; }
+  if(!timers.length){ ul.append(el('li', 'empty', '動いているタイマーはありません。下のボタン、またはチャットで頼んでください。')); return; }
   timers.forEach(t => {
     const li = el('li', 'timer-item'); li.dataset.id = t.id;
     const row = el('div', 'timer-row');
@@ -716,12 +716,26 @@ async function sendChat(text){
   setOrb('thinking');
   const sent = chatHist.slice(-12).map(m => m === um ? m : { role:m.role, content:m.content });
   try{
-    const res = await O.callAI(att.media.length || dr.text ? 'gemini' : $('#brain').value, { system:jarvisPrompt() + dr.text, messages:sent, json:true, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined });
+    const want = att.media.length || dr.text ? 'gemini' : $('#brain').value;
+    const base = { system:jarvisPrompt() + dr.text, messages:sent, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined };
+    let res;
+    try{ res = await O.callAI(want, Object.assign({ json:true }, base)); }
+    catch(e1){
+      if(/429|quota|タイムアウト|遅れて/i.test(e1.message)) throw e1;
+      // JSON指定が原因の失敗かもしれないので、指定なしで再試行し、だめなら別のAIで試す
+      log('sys', 'チャットの再試行: ' + e1.message.slice(0, 80));
+      try{ res = await O.callAI(want, base); }
+      catch(e2){
+        const alt = ['gemini','gpt','llama'].find(k => k !== want && O.hasKey(AGENTS[k].provider));
+        if(!alt) throw e1;
+        res = await O.callAI(alt, base);
+      }
+    }
     const out = parseJarvis(res.text);
     delete um.media;
     chatHist.push({ role:'assistant', content:res.text });
     const acts = out.actions.slice(0, 4).map(cleanAction).filter(Boolean);
-    log(res.agent, 'Jarvis: ' + out.reply.slice(0, 70));
+    log(res.agent, 'チャット: ' + out.reply.slice(0, 70));
     addMsg('ai', out.reply, { agent:res.agent, demo:res.demo, chips:acts.map(a => ({ add_task:'タスク追加', set_timer:'タイマー', delegate:'チームへ依頼', add_event:'予定の確認カード', search:'ネット検索' })[a.type] || (O.ws && O.ws.label(a) + '（確認カード）')) });
     runActions(acts); speak(out.reply);
   }catch(e){
@@ -840,7 +854,7 @@ function renderSetup(){
   $('#setupCard').classList.toggle('complete', !need);
 }
 O.ui_renderSetup = renderSetup;
-$('#brain').addEventListener('change', () => { updateJarvisMeta(); toast('Jarvisの頭脳: ' + AGENTS[$('#brain').value].name); log('sys', '頭脳を切り替え: ' + AGENTS[$('#brain').value].name); });
+$('#brain').addEventListener('change', () => { updateJarvisMeta(); toast('チャットのAI: ' + AGENTS[$('#brain').value].name); log('sys', '頭脳を切り替え: ' + AGENTS[$('#brain').value].name); });
 $('#userChip').addEventListener('click', () => toggleDrawer(true));
 $('#loginBtn').addEventListener('click', doLogin);
 $('#drawerSettings').addEventListener('click', () => { toggleDrawer(false); openSettings(); });

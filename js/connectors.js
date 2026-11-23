@@ -12,7 +12,7 @@ function el(tag, cls, text){
   return e;
 }
 const SHARE = [
-  ['events', '今日の予定', 'Jarvisと提案フィードに渡す'],
+  ['events', '今日の予定', 'チャットと提案フィードに渡す'],
   ['tasks', 'タスク', '未完了のタスク'],
   ['weather', '天気', '選んだ場所の天気'],
   ['news', 'ニュース', '主要ニュースの見出し'],
