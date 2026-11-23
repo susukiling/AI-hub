@@ -376,7 +376,7 @@ O.onAuth = u => {
   updateAccount(); refreshPills();
   if(u){
     O.state.authError = '';
-    log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); O.hist.pull(); loadEvents(); renderPhotos();
+    log('sys', 'ログイン: ' + (u.email || u.displayName)); O.afterLogin(); O.hist.pull().then(autoResume); if(O.mem) O.mem.pull(); loadEvents(); renderPhotos();
     if(!aiWas && O.anyKey()){ log('sys', '共有プロキシ経由でAIが使えるようになりました'); loadNews(true); loadFeed(); }
   }else{ O.state.events = null; renderEvents(); renderPhotos(); }
   aiWas = O.anyKey();
@@ -617,6 +617,7 @@ const WS_ACTIONS = `
 - {"type":"form_add_question","file":"名前","title":"質問","kind":"text か choice","options":["選択肢"]}
 - {"type":"form_delete_question","file":"名前","title":"質問文そのまま"}`;
 function jarvisPrompt(){
+  const mem = O.mem ? O.mem.prompt() : '';
   return `あなたは「Orbit」、映画のジャービスのように落ち着いて有能な日本語のマネージャー型AIアシスタントです。依頼に簡潔に答え、必要なら操作を実行します。
 下の「状況」に書かれている予定・天気・タスクを根拠に答えてください。書かれていないことは分からないと伝えます。
 必ず次の形式のJSONだけを返してください。前後に文章やコードブロックは付けません。
@@ -630,7 +631,7 @@ actionsには必要なものだけ入れます。
 ${O.ws && O.ws.canWrite() ? WS_ACTIONS : ''}
 
 状況:
-${contextText()}`;
+${contextText()}${mem}`;
 }
 function parseJarvis(t){
   const j = O.safeJSON(t);
@@ -669,13 +670,19 @@ function newChat(){
   O.hist.newChat(); chatHist = []; $('#chat').textContent = '';
   addMsg('ai', '新しい会話を始めます。ご用件をどうぞ。', { nosave:true });
 }
-function resumeChat(c){
+function resumeChat(c, quiet){
   O.hist.current = c.id; chatHist = []; $('#chat').textContent = '';
   c.messages.forEach(m => {
     if(m.role === 'user'){ addMsg('user', m.text, { att:m.att, nosave:true }); chatHist.push({ role:'user', content:m.text }); }
     else{ addMsg(m.role === 'err' ? 'err' : 'ai', m.text, { agent:m.agent, demo:m.demo, nosave:true }); if(m.role === 'ai') chatHist.push({ role:'assistant', content:m.text }); }
   });
-  setView('jarvis'); toast('会話を再開しました');
+  if(!quiet){ setView('jarvis'); toast('会話を再開しました'); }
+}
+/* 前回の続きから始める: 開いたとき、いちばん新しいチャットの会話を自動で開く（「新しい会話」を押すまで同じ会話） */
+function autoResume(){
+  if(O.hist.current || chatHist.length) return;
+  const c = O.hist.all().filter(x => x.kind === 'jarvis' && x.messages.length).sort((a, b) => b.updatedAt - a.updatedAt)[0];
+  if(c) resumeChat(c, true);
 }
 /* ネット検索つきの回答（Gemini + Google検索）。検索結果は文章として表示するだけで、ここから操作は実行しない */
 async function webAnswer(messages){
@@ -714,7 +721,7 @@ async function sendChat(text){
     return;
   }
   setOrb('thinking');
-  const sent = chatHist.slice(-12).map(m => m === um ? m : { role:m.role, content:m.content });
+  const sent = chatHist.slice(-20).map(m => m === um ? m : { role:m.role, content:m.content });
   try{
     const want = att.media.length || dr.text ? 'gemini' : $('#brain').value;
     const base = { system:jarvisPrompt() + dr.text, messages:sent, tag:'jarvis', user:text, temperature:.5, maxTokens:att.media.length ? 3000 : undefined };
@@ -738,6 +745,7 @@ async function sendChat(text){
     log(res.agent, 'チャット: ' + out.reply.slice(0, 70));
     addMsg('ai', out.reply, { agent:res.agent, demo:res.demo, chips:acts.map(a => ({ add_task:'タスク追加', set_timer:'タイマー', delegate:'チームへ依頼', add_event:'予定の確認カード', search:'ネット検索' })[a.type] || (O.ws && O.ws.label(a) + '（確認カード）')) });
     runActions(acts); speak(out.reply);
+    if(O.mem) O.mem.learn(text, out.reply);
   }catch(e){
     delete um.media;
     addMsg('err', O.friendly(e)); log('sys', 'エラー: ' + e.message); setOrb('idle');
@@ -903,7 +911,7 @@ function openSettings(){
   $('#mGemini').value = c.models.gemini; $('#mLlama').value = c.models.llama; $('#mGpt').value = c.models.gpt;
   $('#profile').value = c.profile; $('#cityKey').value = c.cityKey;
   $('#rememberKeys').checked = c.rememberKeys !== false; $('#proxyUrl').value = c.proxyUrl; $('#recaptchaKey').value = c.recaptchaKey;
-  $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
+  $('#memOn').checked = c.memOn !== false; if(O.mem) O.mem.render(); $('#voiceOn').checked = !!c.voice; $('#wakeOn').checked = !!c.wake;
   $('#ttsEngine').value = c.ttsEngine || 'browser'; $('#vvUrl').value = c.vvUrl || 'http://localhost:50021'; fillVV(c.vvSpeaker);
   fillVoices(); $('#voiceRate').value = c.rate || 1; $('#voicePitch').value = c.pitch || 1;
   dlg.showModal();
@@ -944,7 +952,7 @@ $('#settingsForm').addEventListener('submit', async e => {
   c.groqKey = $('#groqKey').value.trim(); c.geminiKey = $('#geminiKey').value.trim();
   c.models = { gemini:$('#mGemini').value.trim() || O.defaults.models.gemini, llama:$('#mLlama').value.trim() || O.defaults.models.llama, gpt:$('#mGpt').value.trim() || O.defaults.models.gpt };
   c.profile = $('#profile').value.trim(); c.cityKey = $('#cityKey').value;
-  c.voice = $('#voiceOn').checked; c.wake = $('#wakeOn').checked;
+  c.memOn = $('#memOn').checked; c.voice = $('#voiceOn').checked; c.wake = $('#wakeOn').checked;
   c.ttsEngine = $('#ttsEngine').value; c.vvUrl = $('#vvUrl').value.trim() || 'http://localhost:50021'; c.vvSpeaker = +$('#vvSpeaker').value || 3;
   c.voiceName = $('#voiceName').value; c.rate = +$('#voiceRate').value || 1; c.pitch = +$('#voicePitch').value || 1;
   if(c.cityKey === 'geo'){
@@ -992,7 +1000,8 @@ function updateHello(){
     refreshPills(); pickBrain(); aiWas = O.anyKey(); renderSetup();
     if(O.aiReady) log('gemini', 'Firebase AI Logic に接続しました（鍵なしでGeminiが使えます）');
     else if(O.aiProblem) log('sys', O.aiProblem);
-    addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null, nosave:true });
+    autoResume();
+    if(!chatHist.length) addMsg('ai', O.anyKey() ? 'Orbit、起動しました。ご用件をどうぞ。' : 'Orbit、起動しました。いまはデモモードです。メニューの設定にGroqかGeminiのAPIキーを入れると、実際のAIが動きます。', { agent:null, nosave:true });
     return Promise.allSettled([loadNews(false), O.user ? loadEvents() : Promise.resolve()]);
   }).then(() => {
     const at = store.get('feedAt', 0);

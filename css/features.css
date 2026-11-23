@@ -203,3 +203,6 @@
 .tcard .out,.tcard .tc-body,.tcard p{font-size:14.5px;line-height:1.85}
 @media (min-width:1500px){.bento.single>.team{width:min(100%,1400px)}}
 @media (max-width:1100px){.trio{grid-template-columns:1fr}.tcard{min-height:0}}
+.mem-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;max-height:220px;overflow-y:auto}
+.mem-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px}
+.mem-row span{min-width:0;overflow-wrap:anywhere}

@@ -8,10 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/base.css?v=202611231311">
-<link rel="stylesheet" href="css/home.css?v=202611231311">
-<link rel="stylesheet" href="css/features.css?v=202611231311">
-<link rel="stylesheet" href="css/material.css?v=202611231311">
+<link rel="stylesheet" href="css/base.css?v=202611231441">
+<link rel="stylesheet" href="css/home.css?v=202611231441">
+<link rel="stylesheet" href="css/features.css?v=202611231441">
+<link rel="stylesheet" href="css/material.css?v=202611231441">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -321,6 +321,11 @@
       <div class="vv-row"><select class="field" id="vvSpeaker"></select><button class="btn sm" type="button" id="vvLoad">声を読み込む</button></div>
       <p class="note" style="margin:6px 0 0">エンジンはこのPC上で動かすので、同じPCのブラウザからだけ使えます。起動時に <code>--cors_policy_mode all</code> を付けてください（スマホやSafariでは使えないことがあります）。つながらないときは、ブラウザの声で読みます。</p>
     </div>
+    <h5>記憶（パーソナル）</h5>
+    <label class="switch"><input type="checkbox" id="memOn"> 会話から好みや進行中のことを覚えて、次の会話で使う</label>
+    <p class="note" style="margin:6px 0 0">数回の会話ごとにGeminiが短くまとめます。パスワード・キー・住所などは覚えません。ここで1件ずつ消したり、自分で足したりできます。</p>
+    <div id="memList" class="mem-list"></div>
+    <div class="vv-row"><input class="field" id="memNew" placeholder="例: 朝は6時に起きる" maxlength="70"><button class="btn sm" type="button" id="memAdd">覚えさせる</button><button class="btn sm" type="button" id="memClear">全部忘れる</button></div>
     <label for="voiceName">読み上げの声（端末にある声から選べます）</label>
     <select class="field" id="voiceName"></select>
     <div class="grid2">
@@ -367,18 +372,19 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="js/firebase-config.js?v=202611231311"></script>
-<script src="js/core.js?v=202611231311"></script>
-<script src="js/services.js?v=202611231311"></script>
-<script src="js/history.js?v=202611231311"></script>
-<script src="js/attach.js?v=202611231311"></script>
-<script src="js/team.js?v=202611231311"></script>
-<script src="js/vision.js?v=202611231311"></script>
-<script src="js/drive.js?v=202611231311"></script>
-<script src="js/workspace.js?v=202611231311"></script>
-<script src="js/mail.js?v=202611231311"></script>
-<script src="js/connectors.js?v=202611231311"></script>
-<script src="js/voicevox.js?v=202611231311"></script>
-<script src="js/app.js?v=202611231311"></script>
+<script src="js/firebase-config.js?v=202611231441"></script>
+<script src="js/core.js?v=202611231441"></script>
+<script src="js/services.js?v=202611231441"></script>
+<script src="js/memory.js?v=202611231441"></script>
+<script src="js/history.js?v=202611231441"></script>
+<script src="js/attach.js?v=202611231441"></script>
+<script src="js/team.js?v=202611231441"></script>
+<script src="js/vision.js?v=202611231441"></script>
+<script src="js/drive.js?v=202611231441"></script>
+<script src="js/workspace.js?v=202611231441"></script>
+<script src="js/mail.js?v=202611231441"></script>
+<script src="js/connectors.js?v=202611231441"></script>
+<script src="js/voicevox.js?v=202611231441"></script>
+<script src="js/app.js?v=202611231441"></script>
 </body>
 </html>
