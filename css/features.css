@@ -206,3 +206,17 @@
 .mem-list{display:flex;flex-direction:column;gap:6px;margin:10px 0;max-height:220px;overflow-y:auto}
 .mem-row{display:flex;gap:8px;align-items:center;justify-content:space-between;padding:6px 10px;border-radius:12px;background:rgba(255,255,255,.07);font-size:13px}
 .mem-row span{min-width:0;overflow-wrap:anywhere}
+/* 問題作成 */
+.quiz-wrap{flex:1;min-height:0;display:grid;grid-template-columns:minmax(260px,360px) 1fr;gap:18px;overflow:hidden}
+.quiz-form,.quiz-res{min-height:0;overflow-y:auto;display:flex;flex-direction:column;gap:8px}
+.quiz-form textarea{min-height:130px}
+.quiz-acts{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:6px}
+.quiz-title{margin:0 0 8px;font:600 18px var(--font-display)}
+.quiz-q{padding:12px 14px;margin-bottom:10px;border-radius:16px;background:rgba(0,0,0,.2);border:1px solid rgba(255,255,255,.1);display:flex;flex-direction:column;gap:6px;align-items:flex-start}
+.quiz-qh{font:600 11px var(--font-mono);letter-spacing:.12em;color:var(--mint)}
+.quiz-qt{font-size:14.5px;line-height:1.8;white-space:pre-wrap}
+.quiz-ch{margin:0;padding-left:1.4em;font-size:14px;line-height:1.8;color:var(--muted)}
+.quiz-ch li{list-style:upper-alpha}
+.quiz-a{font-size:13.5px;color:var(--amber);line-height:1.7}
+@media (max-width:900px){.quiz-wrap{grid-template-columns:1fr;overflow-y:auto}.quiz-form,.quiz-res{overflow:visible}}
+.quiz-ch li::before{content:none}

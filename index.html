@@ -8,10 +8,10 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&family=Noto+Sans+JP:wght@400;500;700&family=Space+Grotesk:wght@400;500;600;700&display=swap">
-<link rel="stylesheet" href="css/base.css?v=202611232034">
-<link rel="stylesheet" href="css/home.css?v=202611232034">
-<link rel="stylesheet" href="css/features.css?v=202611232034">
-<link rel="stylesheet" href="css/material.css?v=202611232034">
+<link rel="stylesheet" href="css/base.css?v=202611261036">
+<link rel="stylesheet" href="css/home.css?v=202611261036">
+<link rel="stylesheet" href="css/features.css?v=202611261036">
+<link rel="stylesheet" href="css/material.css?v=202611261036">
 </head>
 <body>
 <div class="aurora" aria-hidden="true"><i></i><i></i><i></i><i></i></div>
@@ -185,6 +185,36 @@
       </div>
     </article>
 
+    <!-- Quiz (full view) -->
+    <article class="glass quiz" aria-label="問題作成">
+      <div class="tile-h"><h2>問題作成</h2><span class="meta">文章・画像 → 問題 → PDF</span></div>
+      <div class="quiz-wrap">
+        <form id="quizForm" class="quiz-form">
+          <label for="quizSrc">内容（テーマ、教科書の文章、ノートの文字など）</label>
+          <textarea class="field" id="quizSrc" rows="6" placeholder="例: 光合成について（または、問題にしたい文章を貼る）"></textarea>
+          <div class="vv-row"><button class="btn sm" type="button" id="quizImgBtn">画像から作る</button><span class="note" id="quizImgName" style="margin:0"></span><button class="btn sm" type="button" id="quizImgClear" hidden>外す</button><input type="file" id="quizImg" accept="image/*" hidden></div>
+          <div class="grid2">
+            <div><label for="quizCount">問題数</label><select class="field" id="quizCount"><option>5</option><option selected>10</option><option>15</option><option>20</option></select></div>
+            <div><label for="quizType">形式</label><select class="field" id="quizType"><option value="mix">いろいろ混ぜる</option><option value="choice">4択</option><option value="tf">○×</option><option value="short">記述（短い答え）</option><option value="fill">穴埋め</option></select></div>
+            <div><label for="quizDiff">難しさ</label><select class="field" id="quizDiff"><option>やさしい</option><option selected>ふつう</option><option>むずかしい</option></select></div>
+            <div><label for="quizLevel">対象（任意）</label><input class="field" id="quizLevel" placeholder="例: 中学2年"></div>
+          </div>
+          <label class="switch"><input type="checkbox" id="quizExplain" checked> 解説も付ける</label>
+          <button class="btn primary" type="submit" id="quizRun">問題を作る</button>
+          <p class="note" id="quizStatus" role="status"></p>
+        </form>
+        <div class="quiz-res">
+          <div class="quiz-acts" id="quizActs" hidden>
+            <button class="btn primary" type="button" id="quizPdf">問題をPDFに</button>
+            <button class="btn" type="button" id="quizPdfAns">解答つきPDF</button>
+            <button class="btn" type="button" id="quizHtml">HTMLで保存</button>
+            <button class="btn" type="button" id="quizShowAll">答えを全部見る</button>
+          </div>
+          <div id="quizOut"></div>
+        </div>
+      </div>
+    </article>
+
     <!-- Vision (full view) -->
     <article class="glass vision" aria-label="画像読み取り">
       <div class="tile-h"><h2>画像読み取り</h2><span class="meta">画像 → 予定・タスク・問題</span></div>
@@ -252,6 +282,7 @@
   <button class="nav-item" type="button" data-view="home"><b>ホーム</b><small>今日のまとめを一覧</small></button>
   <button class="nav-item" type="button" data-view="jarvis"><b>チャット</b><small>話しかけて操作する</small></button>
   <button class="nav-item" type="button" data-view="team"><b>AIチーム</b><small>複数のAIで分担して作業</small></button>
+  <button class="nav-item" type="button" data-view="quiz"><b>問題作成</b><small>文章・画像 → 問題 → PDF</small></button>
   <button class="nav-item" type="button" data-view="vision"><b>画像読み取り</b><small>画像 → 予定・タスク・問題</small></button>
   <button class="nav-item" type="button" data-view="history"><b>会話履歴</b><small>過去の会話を検索・再開</small></button>
   <button class="nav-item" type="button" data-view="setup"><b>接続・はじめかた</b><small>ログイン・連携のようす</small></button>
@@ -372,19 +403,20 @@
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-auth-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-check-compat.js"></script>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
-<script src="js/firebase-config.js?v=202611232034"></script>
-<script src="js/core.js?v=202611232034"></script>
-<script src="js/services.js?v=202611232034"></script>
-<script src="js/memory.js?v=202611232034"></script>
-<script src="js/history.js?v=202611232034"></script>
-<script src="js/attach.js?v=202611232034"></script>
-<script src="js/team.js?v=202611232034"></script>
-<script src="js/vision.js?v=202611232034"></script>
-<script src="js/drive.js?v=202611232034"></script>
-<script src="js/workspace.js?v=202611232034"></script>
-<script src="js/mail.js?v=202611232034"></script>
-<script src="js/connectors.js?v=202611232034"></script>
-<script src="js/voicevox.js?v=202611232034"></script>
-<script src="js/app.js?v=202611232034"></script>
+<script src="js/firebase-config.js?v=202611261036"></script>
+<script src="js/core.js?v=202611261036"></script>
+<script src="js/services.js?v=202611261036"></script>
+<script src="js/memory.js?v=202611261036"></script>
+<script src="js/history.js?v=202611261036"></script>
+<script src="js/attach.js?v=202611261036"></script>
+<script src="js/team.js?v=202611261036"></script>
+<script src="js/quiz.js?v=202611261036"></script>
+<script src="js/vision.js?v=202611261036"></script>
+<script src="js/drive.js?v=202611261036"></script>
+<script src="js/workspace.js?v=202611261036"></script>
+<script src="js/mail.js?v=202611261036"></script>
+<script src="js/connectors.js?v=202611261036"></script>
+<script src="js/voicevox.js?v=202611261036"></script>
+<script src="js/app.js?v=202611261036"></script>
 </body>
 </html>

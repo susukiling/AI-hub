@@ -817,7 +817,7 @@ const runTeam = (t, fromChat) => O.runTeam(t, !!fromChat);
 /* =========================================================
    メニュー（ハンバーガー）と画面切り替え
    ========================================================= */
-const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', mail:'.mail', setup:'.setup', log:'.log' };
+const TILE = { brief:'.brief', weather:'.weather', feed:'.feed', events:'.events', tasks:'.tasks', news:'.news', screen:'.screen', photos:'.photos', timers:'.timers', jarvis:'.jarvis', team:'.team', history:'.history', vision:'.vision', quiz:'.quiz', mail:'.mail', setup:'.setup', log:'.log' };
 const HOME = ['brief', 'setup', 'events', 'tasks', 'weather', 'feed'];   // ホームは、毎日見るものだけ。ほかは「その他」から
 function setView(v){
   const single = v !== 'home' && TILE[v] ? v : null;
@@ -826,7 +826,7 @@ function setView(v){
   $$('.nav-item').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
   store.set('view', single || 'home'); window.scrollTo({ top:0 });
   $$('.nb-item[data-view]').forEach(n => n.setAttribute('aria-current', String(n.dataset.view === (single || 'home'))));
-  $('#navMore').setAttribute('aria-current', String(!!single && !['jarvis', 'team', 'vision'].includes(single)));
+  $('#navMore').setAttribute('aria-current', String(!!single && !['jarvis', 'team', 'vision', 'quiz'].includes(single)));
   $('#fab').hidden = !!single;
   if(single === 'setup') renderSetup();
   if(single === 'history') O.hist.render();
